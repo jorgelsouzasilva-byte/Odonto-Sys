@@ -1,8 +1,8 @@
-import { useState } from "react"
-import { Search, Plus, Filter, MoreVertical, FileText, Phone, Mail, Calendar, Stethoscope, Users } from "lucide-react"
+import { useState, FormEvent } from "react"
+import { Search, Plus, Filter, MoreVertical, FileText, Phone, Mail, Calendar, Stethoscope, Users, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const patients = [
+const initialPatients = [
   { id: 1, name: 'Maria Silva', phone: '(11) 98765-4321', email: 'maria.silva@email.com', lastVisit: '10/03/2026', status: 'Ativo' },
   { id: 2, name: 'João Santos', phone: '(11) 91234-5678', email: 'joao.santos@email.com', lastVisit: '15/03/2026', status: 'Ativo' },
   { id: 3, name: 'Pedro Costa', phone: '(11) 99876-5432', email: 'pedro.costa@email.com', lastVisit: '01/02/2026', status: 'Inativo' },
@@ -11,8 +11,11 @@ const patients = [
 ]
 
 export default function Patients() {
+  const [patients, setPatients] = useState(initialPatients)
   const [selectedPatient, setSelectedPatient] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState('dados')
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingPatient, setEditingPatient] = useState<any>(null)
 
   const tabs = [
     { id: 'dados', name: 'Dados Pessoais' },
@@ -23,11 +26,31 @@ export default function Patients() {
     { id: 'financeiro', name: 'Financeiro' },
   ]
 
+  const handleSave = (e: FormEvent) => {
+    e.preventDefault()
+    setIsFormOpen(false)
+    setEditingPatient(null)
+    // Simulação de save
+  }
+
+  const openNewForm = () => {
+    setEditingPatient(null)
+    setIsFormOpen(true)
+  }
+
+  const openEditForm = () => {
+    setEditingPatient(patients.find(p => p.id === selectedPatient))
+    setIsFormOpen(true)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Pacientes</h1>
-        <button className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+        <button 
+          onClick={openNewForm}
+          className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        >
           <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
           Novo Paciente
         </button>
@@ -120,7 +143,10 @@ export default function Patients() {
                       </div>
                     </div>
                     <div className="flex space-x-3">
-                      <button className="inline-flex items-center justify-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
+                      <button 
+                        onClick={openEditForm}
+                        className="inline-flex items-center justify-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      >
                         Editar
                       </button>
                       <button className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
@@ -260,6 +286,62 @@ export default function Patients() {
           )}
         </div>
       </div>
+
+      {/* Modal de Formulário */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {editingPatient ? 'Editar Paciente' : 'Novo Paciente'}
+              </h2>
+              <button 
+                onClick={() => setIsFormOpen(false)}
+                className="text-slate-400 hover:text-slate-500"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSave} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nome Completo</label>
+                  <input type="text" defaultValue={editingPatient?.name} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">CPF</label>
+                  <input type="text" className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Telefone</label>
+                  <input type="text" defaultValue={editingPatient?.phone} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+                  <input type="email" defaultValue={editingPatient?.email} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+              </div>
+              
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(false)}
+                  className="rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

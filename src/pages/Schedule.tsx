@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, User, Stethoscope } from "lucide-react"
+import { useState, FormEvent } from "react"
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, User, Stethoscope, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const days = [
@@ -12,7 +12,7 @@ const days = [
   { date: '2026-03-22', isCurrentMonth: true },
 ]
 
-const appointments = [
+const initialAppointments = [
   { id: 1, patient: 'Maria Silva', procedure: 'Limpeza', time: '09:00', duration: '1h', status: 'Confirmado', dentist: 'Dr. Jorge', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' },
   { id: 2, patient: 'João Santos', procedure: 'Extração', time: '10:30', duration: '1h 30m', status: 'A Confirmar', dentist: 'Dra. Ana', color: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' },
   { id: 3, patient: 'Pedro Costa', procedure: 'Avaliação', time: '11:00', duration: '30m', status: 'Na Sala de Espera', dentist: 'Dr. Jorge', color: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' },
@@ -22,6 +22,45 @@ const appointments = [
 
 export default function Schedule() {
   const [view, setView] = useState('day')
+  const [appointments, setAppointments] = useState(initialAppointments)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
+  const [isEditing, setIsEditing] = useState(false)
+
+  const handleOpenNew = () => {
+    setSelectedAppointment(null)
+    setIsEditing(true)
+    setIsModalOpen(true)
+  }
+
+  const handleOpenAppointment = (appointment: any) => {
+    setSelectedAppointment(appointment)
+    setIsEditing(false)
+    setIsModalOpen(true)
+  }
+
+  const handleConfirm = () => {
+    setAppointments(appointments.map(a => 
+      a.id === selectedAppointment.id 
+        ? { ...a, status: 'Confirmado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' }
+        : a
+    ))
+    setIsModalOpen(false)
+  }
+
+  const handleComplete = () => {
+    setAppointments(appointments.map(a => 
+      a.id === selectedAppointment.id 
+        ? { ...a, status: 'Realizado', color: 'bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400' }
+        : a
+    ))
+    setIsModalOpen(false)
+  }
+
+  const handleSave = (e: FormEvent) => {
+    e.preventDefault()
+    setIsModalOpen(false)
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -67,6 +106,7 @@ export default function Schedule() {
             </div>
             <div className="ml-6 h-6 w-px bg-slate-300 dark:bg-slate-700" />
             <button
+              onClick={handleOpenNew}
               type="button"
               className="ml-6 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >
@@ -112,10 +152,10 @@ export default function Schedule() {
                     className="relative mt-px flex sm:col-start-1"
                     style={{ gridRow: `${(parseInt(appointment.time.split(':')[0]) - 8) * 12 + 2} / span ${appointment.duration.includes('30m') ? 6 : appointment.duration.includes('2h') ? 24 : 12}` }}
                   >
-                    <a
-                      href="#"
+                    <button
+                      onClick={() => handleOpenAppointment(appointment)}
                       className={cn(
-                        "group absolute inset-1 flex flex-col overflow-y-auto rounded-lg p-2 text-xs leading-5 hover:bg-opacity-80 transition-opacity",
+                        "group absolute inset-1 flex flex-col overflow-y-auto rounded-lg p-2 text-xs leading-5 hover:bg-opacity-80 transition-opacity text-left w-full",
                         appointment.color
                       )}
                     >
@@ -131,7 +171,7 @@ export default function Schedule() {
                         <User className="h-3 w-3" />
                         <span>{appointment.dentist}</span>
                       </div>
-                    </a>
+                    </button>
                   </li>
                 ))}
               </ol>
@@ -202,6 +242,116 @@ export default function Schedule() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Agendamento */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {isEditing ? (selectedAppointment ? 'Editar Agendamento' : 'Novo Agendamento') : 'Detalhes do Agendamento'}
+              </h2>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-500"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            {isEditing ? (
+              <form onSubmit={handleSave} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Paciente</label>
+                  <input type="text" defaultValue={selectedAppointment?.patient} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Procedimento</label>
+                  <input type="text" defaultValue={selectedAppointment?.procedure} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Horário</label>
+                    <input type="time" defaultValue={selectedAppointment?.time} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Profissional</label>
+                    <input type="text" defaultValue={selectedAppointment?.dentist} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
+                  </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Paciente</p>
+                  <p className="text-base font-semibold text-slate-900 dark:text-white">{selectedAppointment?.patient}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Procedimento</p>
+                  <p className="text-base text-slate-900 dark:text-white">{selectedAppointment?.procedure}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Horário</p>
+                    <p className="text-base text-slate-900 dark:text-white">{selectedAppointment?.time} ({selectedAppointment?.duration})</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Profissional</p>
+                    <p className="text-base text-slate-900 dark:text-white">{selectedAppointment?.dentist}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Status</p>
+                  <span className={cn("inline-flex items-center rounded-full px-2 py-1 text-xs font-medium mt-1", selectedAppointment?.color)}>
+                    {selectedAppointment?.status}
+                  </span>
+                </div>
+                
+                <div className="mt-6 flex flex-col space-y-2">
+                  {selectedAppointment?.status !== 'Confirmado' && selectedAppointment?.status !== 'Realizado' && (
+                    <button
+                      onClick={handleConfirm}
+                      className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                    >
+                      Confirmar Consulta
+                    </button>
+                  )}
+                  {selectedAppointment?.status !== 'Realizado' && (
+                    <button
+                      onClick={handleComplete}
+                      className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                    >
+                      Marcar como Realizado
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    Editar Agendamento
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

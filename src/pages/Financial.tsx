@@ -1,38 +1,289 @@
-import { useState } from "react"
-import { ArrowDownRight, ArrowUpRight, DollarSign, Plus, Download, Filter, Search, FileText, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState, useEffect, FormEvent } from "react"
+import { 
+  ArrowDownRight, 
+  ArrowUpRight, 
+  DollarSign, 
+  Plus, 
+  Download, 
+  Filter, 
+  Search, 
+  FileText, 
+  ChevronLeft, 
+  ChevronRight, 
+  X,
+  Calendar,
+  Loader2
+} from "lucide-react"
 import { cn } from "@/lib/utils"
-
-const transactions = [
-  { id: 1, date: '16/03/2026', description: 'Clareamento Dental - Maria Silva', category: 'Procedimento', type: 'income', amount: 850.00, status: 'Pago', method: 'Cartão de Crédito' },
-  { id: 2, date: '15/03/2026', description: 'Compra de Materiais (Dental Cremer)', category: 'Estoque', type: 'expense', amount: 1240.50, status: 'Pago', method: 'Boleto' },
-  { id: 3, date: '15/03/2026', description: 'Limpeza - João Santos', category: 'Procedimento', type: 'income', amount: 250.00, status: 'Pendente', method: 'Pix' },
-  { id: 4, date: '14/03/2026', description: 'Conta de Luz', category: 'Despesas Fixas', type: 'expense', amount: 450.00, status: 'Pago', method: 'Débito Automático' },
-  { id: 5, date: '14/03/2026', description: 'Manutenção Equipamento', category: 'Patrimônio', type: 'expense', amount: 300.00, status: 'Pago', method: 'Pix' },
-  { id: 6, date: '13/03/2026', description: 'Canal - Pedro Costa (Parcela 1/3)', category: 'Procedimento', type: 'income', amount: 400.00, status: 'Pago', method: 'Cartão de Crédito' },
-]
-
-const stats = [
-  { name: 'Receitas (Mês)', stat: 'R$ 45.231,00', icon: ArrowUpRight, change: '+12%', changeType: 'increase' },
-  { name: 'Despesas (Mês)', stat: 'R$ 12.450,00', icon: ArrowDownRight, change: '-2%', changeType: 'decrease' },
-  { name: 'Saldo Atual', stat: 'R$ 32.781,00', icon: DollarSign, change: '+18%', changeType: 'increase' },
-  { name: 'A Receber (Hoje)', stat: 'R$ 1.250,00', icon: FileText, change: '5', changeType: 'neutral' },
-]
+import { 
+  Transaction, 
+  FinancialSummary, 
+  FinancialFilters, 
+  PeriodType,
+  TransactionType,
+  TransactionStatus
+} from "../types/financeiro"
+import { financeiroService } from "../services/financeiroService"
 
 export default function Financial() {
-  const [activeTab, setActiveTab] = useState('todas')
+  const [activeTab, setActiveTab] = useState<'todas' | TransactionType>('todas')
+  const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [summary, setSummary] = useState<FinancialSummary | null>(null)
+  const [filters, setFilters] = useState<FinancialFilters>({
+    period: 'month',
+    start_date: '2026-03-01',
+    end_date: '2026-03-31',
+    type: 'all',
+    status: 'all',
+    page: 1,
+    per_page: 20
+  })
+  
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [totalItems, setTotalItems] = useState(0)
+
+  const [formData, setFormData] = useState<Omit<Transaction, 'id'>>({
+    data: new Date().toISOString().split('T')[0],
+    descricao: '',
+    categoria: '',
+    metodo: 'Pix',
+    status: 'Pendente',
+    tipo: 'receita',
+    valor: 0,
+    filial_id: 1
+  })
+
+  useEffect(() => {
+    fetchData()
+  }, [filters])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [transRes, summaryRes] = await Promise.all([
+        financeiroService.getTransactions(filters),
+        financeiroService.getSummary(filters)
+      ])
+      setTransactions(transRes.data)
+      setTotalItems(transRes.meta.total)
+      setSummary(summaryRes)
+    } catch (error) {
+      console.error("Error fetching financial data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault()
+    setFilters(prev => ({ ...prev, search: searchTerm, page: 1 }))
+  }
+
+  const handlePeriodChange = async (period: PeriodType) => {
+    const nav = await financeiroService.getPeriodNav(period, filters.start_date || new Date().toISOString())
+    setFilters(prev => ({
+      ...prev,
+      period,
+      start_date: nav.current.start_date,
+      end_date: nav.current.end_date,
+      page: 1
+    }))
+  }
+
+  const handleNavPeriod = async (direction: 'prev' | 'next') => {
+    const nav = await financeiroService.getPeriodNav(filters.period, filters.start_date || new Date().toISOString())
+    const target = direction === 'prev' ? nav.prev : nav.next
+    setFilters(prev => ({
+      ...prev,
+      start_date: target.start_date,
+      end_date: target.end_date,
+      page: 1
+    }))
+  }
+
+  const handleExport = async (format: 'pdf' | 'xls') => {
+    setExporting(true)
+    try {
+      const res = await financeiroService.export({ ...filters, format })
+      alert(`${res.mensagem}: ${res.file_name}`)
+      window.open(res.file_url, '_blank')
+    } catch (error: any) {
+      alert(error.error || "Erro ao exportar")
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleSave = async (e: FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      // Adjust value for expenses (ensure it's negative)
+      const finalData = {
+        ...formData,
+        valor: formData.tipo === 'despesa' ? -Math.abs(formData.valor) : Math.abs(formData.valor)
+      }
+      
+      if (selectedTransaction) {
+        await financeiroService.updateTransaction(selectedTransaction.id, finalData)
+      } else {
+        await financeiroService.createTransaction(finalData)
+      }
+      
+      setIsFormOpen(false)
+      setSelectedTransaction(null)
+      fetchData()
+    } catch (error) {
+      alert("Erro ao salvar transação")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOpenDetails = (transaction: Transaction) => {
+    setSelectedTransaction(transaction)
+    setIsDetailsOpen(true)
+  }
+
+  const handleRegisterPayment = async () => {
+    if (!selectedTransaction) return
+    setLoading(true)
+    try {
+      await financeiroService.updateTransaction(selectedTransaction.id, { status: 'Pago' })
+      setIsDetailsOpen(false)
+      fetchData()
+    } catch (error) {
+      alert("Erro ao registrar pagamento")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!selectedTransaction || !confirm("Deseja realmente excluir esta transação?")) return
+    setLoading(true)
+    try {
+      await financeiroService.deleteTransaction(selectedTransaction.id)
+      setIsDetailsOpen(false)
+      fetchData()
+    } catch (error) {
+      alert("Erro ao excluir transação")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    setFilters(prev => ({ ...prev, page: newPage }))
+  }
+
+  const stats = summary ? [
+    { name: 'Receitas (Mês)', stat: `R$ ${summary.receitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: ArrowUpRight, color: 'emerald' },
+    { name: 'Despesas (Mês)', stat: `R$ ${summary.despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: ArrowDownRight, color: 'red' },
+    { name: 'Saldo Atual', stat: `R$ ${summary.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: DollarSign, color: 'indigo' },
+    { name: 'A Receber (Hoje)', stat: `R$ ${summary.a_receber_hoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: FileText, color: 'amber' },
+  ] : []
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Financeiro</h1>
-        <div className="flex space-x-3">
-          <button className="inline-flex items-center justify-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
-            <Download className="-ml-0.5 mr-1.5 h-5 w-5 text-slate-400" aria-hidden="true" />
-            Exportar
-          </button>
-          <button className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Financeiro</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Gerencie o fluxo de caixa da sua clínica</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <select 
+            value={filters.filial_id || ''}
+            onChange={(e) => setFilters(prev => ({ ...prev, filial_id: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))}
+            className="rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white shadow-sm focus:ring-indigo-500"
+          >
+            <option value="">Todas as Filiais</option>
+            <option value="1">Matriz</option>
+            <option value="2">Filial Sul</option>
+          </select>
+          
+          <div className="flex rounded-md shadow-sm">
+            <button 
+              onClick={() => handleExport('pdf')}
+              disabled={exporting}
+              className="inline-flex items-center rounded-l-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Download className="-ml-0.5 mr-1.5 h-5 w-5 text-slate-400" />}
+              PDF
+            </button>
+            <button 
+              onClick={() => handleExport('xls')}
+              disabled={exporting}
+              className="inline-flex items-center rounded-r-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 border-l border-slate-300 dark:border-slate-700 disabled:opacity-50"
+            >
+              XLS
+            </button>
+          </div>
+          <button 
+            onClick={() => {
+              setSelectedTransaction(null)
+              setFormData({
+                data: new Date().toISOString().split('T')[0],
+                descricao: '',
+                categoria: '',
+                metodo: 'Pix',
+                status: 'Pendente',
+                tipo: 'receita',
+                valor: 0,
+                filial_id: 1
+              })
+              setIsFormOpen(true)
+            }}
+            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+          >
             <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
             Nova Transação
+          </button>
+        </div>
+      </div>
+
+      {/* Período e Filtros Rápidos */}
+      <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-800">
+        <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+          {(['day', 'month', 'year', 'custom'] as PeriodType[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => handlePeriodChange(p)}
+              className={cn(
+                "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                filters.period === p 
+                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+              )}
+            >
+              {p === 'day' ? 'Dia' : p === 'month' ? 'Mês' : p === 'year' ? 'Ano' : 'Personalizado'}
+            </button>
+          ))}
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <button 
+            onClick={() => handleNavPeriod('prev')}
+            className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="flex items-center space-x-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
+            <Calendar className="h-4 w-4 text-slate-400" />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              {new Date(filters.start_date || '').toLocaleDateString('pt-BR')} - {new Date(filters.end_date || '').toLocaleDateString('pt-BR')}
+            </span>
+          </div>
+          <button 
+            onClick={() => handleNavPeriod('next')}
+            className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+          >
+            <ChevronRight className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -46,14 +297,16 @@ export default function Financial() {
             <dt>
               <div className={cn(
                 "absolute rounded-xl p-3",
-                item.icon === ArrowUpRight ? "bg-emerald-50 dark:bg-emerald-500/10" :
-                item.icon === ArrowDownRight ? "bg-red-50 dark:bg-red-500/10" :
+                item.color === 'emerald' ? "bg-emerald-50 dark:bg-emerald-500/10" :
+                item.color === 'red' ? "bg-red-50 dark:bg-red-500/10" :
+                item.color === 'amber' ? "bg-amber-50 dark:bg-amber-500/10" :
                 "bg-indigo-50 dark:bg-indigo-500/10"
               )}>
                 <item.icon className={cn(
                   "h-6 w-6",
-                  item.icon === ArrowUpRight ? "text-emerald-600 dark:text-emerald-400" :
-                  item.icon === ArrowDownRight ? "text-red-600 dark:text-red-400" :
+                  item.color === 'emerald' ? "text-emerald-600 dark:text-emerald-400" :
+                  item.color === 'red' ? "text-red-600 dark:text-red-400" :
+                  item.color === 'amber' ? "text-amber-600 dark:text-amber-400" :
                   "text-indigo-600 dark:text-indigo-400"
                 )} aria-hidden="true" />
               </div>
@@ -72,10 +325,13 @@ export default function Financial() {
         <div className="border-b border-slate-200 dark:border-slate-800 p-4 sm:flex sm:items-center sm:justify-between">
           <div className="sm:flex sm:items-center sm:space-x-4">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-              {['todas', 'receitas', 'despesas'].map((tab) => (
+              {(['todas', 'receita', 'despesa'] as const).map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => {
+                    setActiveTab(tab)
+                    setFilters(prev => ({ ...prev, type: tab === 'todas' ? 'all' : tab, page: 1 }))
+                  }}
                   className={cn(
                     activeTab === tab
                       ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
@@ -83,29 +339,46 @@ export default function Financial() {
                     'whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium capitalize'
                   )}
                 >
-                  {tab}
+                  {tab === 'todas' ? 'Todas' : tab === 'receita' ? 'Receitas' : 'Despesas'}
                 </button>
               ))}
             </nav>
           </div>
           <div className="mt-4 sm:mt-0 flex space-x-3">
-            <div className="relative rounded-md shadow-sm">
+            <form onSubmit={handleSearch} className="relative rounded-md shadow-sm">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
               </div>
               <input
                 type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 bg-white dark:bg-slate-900"
                 placeholder="Buscar transação..."
               />
-            </div>
+            </form>
+            <select 
+              value={filters.status || 'all'}
+              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as any, page: 1 }))}
+              className="rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white shadow-sm focus:ring-indigo-500"
+            >
+              <option value="all">Todos Status</option>
+              <option value="Pago">Pago</option>
+              <option value="Pendente">Pendente</option>
+            </select>
             <button className="inline-flex items-center justify-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
               <Filter className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
         
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto relative min-h-[400px]">
+          {loading && (
+            <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 z-10 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            </div>
+          )}
+          
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr>
@@ -118,21 +391,25 @@ export default function Financial() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
-              {transactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+              {transactions.length > 0 ? transactions.map((transaction) => (
+                <tr 
+                  key={transaction.id} 
+                  onClick={() => handleOpenDetails(transaction)}
+                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                >
                   <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-slate-500 dark:text-slate-400 sm:pl-6">
-                    {transaction.date}
+                    {new Date(transaction.data).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-slate-900 dark:text-white">
-                    {transaction.description}
+                    {transaction.descricao}
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
                     <span className="inline-flex items-center rounded-md bg-slate-50 dark:bg-slate-800 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 ring-1 ring-inset ring-slate-500/10">
-                      {transaction.category}
+                      {transaction.categoria}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
-                    {transaction.method}
+                    {transaction.metodo}
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm">
                     <span className={cn(
@@ -145,12 +422,18 @@ export default function Financial() {
                   </td>
                   <td className={cn(
                     "whitespace-nowrap px-3 py-4 text-sm font-medium text-right",
-                    transaction.type === 'income' ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                    transaction.tipo === 'receita' ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
                   )}>
-                    {transaction.type === 'income' ? '+' : '-'} R$ {transaction.amount.toFixed(2).replace('.', ',')}
+                    {transaction.tipo === 'receita' ? '+' : ''} R$ {transaction.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
-              ))}
+              )) : !loading && (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Nenhuma transação encontrada para os filtros selecionados.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -158,22 +441,27 @@ export default function Financial() {
           <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-slate-700 dark:text-slate-300">
-                Mostrando <span className="font-medium">1</span> a <span className="font-medium">6</span> de <span className="font-medium">97</span> resultados
+                Mostrando <span className="font-medium">{(filters.page! - 1) * filters.per_page! + 1}</span> a <span className="font-medium">{Math.min(filters.page! * filters.per_page!, totalItems)}</span> de <span className="font-medium">{totalItems}</span> resultados
               </p>
             </div>
             <div>
               <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                <button className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 focus:z-20 focus:outline-offset-0">
+                <button 
+                  onClick={() => handlePageChange(Math.max(1, filters.page! - 1))}
+                  disabled={filters.page === 1}
+                  className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                >
                   <span className="sr-only">Anterior</span>
                   <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                 </button>
-                <button className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 focus:z-20 focus:outline-offset-0">
-                  1
-                </button>
-                <button className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 focus:z-20 focus:outline-offset-0">
-                  2
-                </button>
-                <button className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 focus:z-20 focus:outline-offset-0">
+                <div className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:z-20 focus:outline-offset-0">
+                  Página {filters.page}
+                </div>
+                <button 
+                  onClick={() => handlePageChange(filters.page! + 1)}
+                  disabled={filters.page! * filters.per_page! >= totalItems}
+                  className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                >
                   <span className="sr-only">Próximo</span>
                   <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -182,6 +470,196 @@ export default function Financial() {
           </div>
         </div>
       </div>
+
+      {/* Modal Nova Transação */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Nova Transação</h2>
+              <button 
+                onClick={() => setIsFormOpen(false)}
+                className="text-slate-400 hover:text-slate-500"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tipo</label>
+                <select 
+                  value={formData.tipo}
+                  onChange={(e) => setFormData({...formData, tipo: e.target.value as TransactionType})}
+                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="receita">Receita</option>
+                  <option value="despesa">Despesa</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Descrição</label>
+                <input 
+                  type="text" 
+                  value={formData.descricao}
+                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                  required 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Valor</label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    value={formData.valor}
+                    onChange={(e) => setFormData({...formData, valor: parseFloat(e.target.value)})}
+                    className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Data</label>
+                  <input 
+                    type="date" 
+                    value={formData.data}
+                    onChange={(e) => setFormData({...formData, data: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                    required 
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Categoria</label>
+                <input 
+                  type="text" 
+                  value={formData.categoria}
+                  onChange={(e) => setFormData({...formData, categoria: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Método de Pagamento</label>
+                <select 
+                  value={formData.metodo}
+                  onChange={(e) => setFormData({...formData, metodo: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartão de Crédito">Cartão de Crédito</option>
+                  <option value="Cartão de Débito">Cartão de Débito</option>
+                  <option value="Boleto">Boleto</option>
+                </select>
+              </div>
+              
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(false)}
+                  className="rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detalhes */}
+      {isDetailsOpen && selectedTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Detalhes da Transação</h2>
+              <button 
+                onClick={() => setIsDetailsOpen(false)}
+                className="text-slate-400 hover:text-slate-500"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Descrição</p>
+                <p className="text-base font-semibold text-slate-900 dark:text-white">{selectedTransaction.descricao}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Valor</p>
+                  <p className={cn(
+                    "text-base font-semibold",
+                    selectedTransaction.tipo === 'receita' ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                  )}>
+                    {selectedTransaction.tipo === 'receita' ? '+' : ''} R$ {selectedTransaction.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Data</p>
+                  <p className="text-base text-slate-900 dark:text-white">{new Date(selectedTransaction.data).toLocaleDateString('pt-BR')}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Categoria</p>
+                  <p className="text-base text-slate-900 dark:text-white">{selectedTransaction.categoria}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Método</p>
+                  <p className="text-base text-slate-900 dark:text-white">{selectedTransaction.metodo}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Status</p>
+                <span className={cn(
+                  "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium mt-1",
+                  selectedTransaction.status === 'Pago' ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20" :
+                  "bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20"
+                )}>
+                  {selectedTransaction.status}
+                </span>
+              </div>
+              
+              {selectedTransaction.status === 'Pendente' && (
+                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <button
+                    onClick={handleRegisterPayment}
+                    className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  >
+                    Registrar Pagamento
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="w-full rounded-md border border-red-300 dark:border-red-900 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Excluir Transação
+                  </button>
+                </div>
+              )}
+              {selectedTransaction.status === 'Pago' && (
+                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                  <button
+                    onClick={handleDelete}
+                    className="w-full rounded-md border border-red-300 dark:border-red-900 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Excluir Transação
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
