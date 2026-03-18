@@ -78,3 +78,38 @@ export interface Financeiro {
   formaPagamento?: string;
   status: 'Pendente' | 'Pago' | 'Cancelado';
 }
+
+export interface EvolucaoItem {
+  procedimentoId: number;
+  procedimentoNome?: string;
+  profissionalId: number;
+  profissionalNome?: string;
+  dentes: {
+    dente: number;
+    faces: string[];
+  }[];
+  valorBase: number;
+  desconto: number;
+  valorFinal: number;
+  observacoes?: string;
+}
+
+export interface Evolucao {
+  id: number;
+  pacienteId: number;
+  data: string;
+  observacoesGerais: string;
+  itens: EvolucaoItem[];
+  totais: {
+    subtotal: number;
+    descontoGeral: number;
+    valorFinal: number;
+  };
+  pagamento: {
+    formaPagamento: string;
+    parcelas: number;
+    dataPagamento: string;
+    status: string;
+    observacoes?: string;
+  };
+}

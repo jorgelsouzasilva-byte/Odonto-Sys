@@ -56,6 +56,30 @@ async function startServer() {
     res.json({ message: "Senha redefinida com sucesso." });
   });
 
+  // Patient Procedure Launch Endpoint
+  app.post("/api/pacientes/:id/lancamento", (req, res) => {
+    const { id } = req.params;
+    const payload = req.body;
+
+    console.log(`Registrando lançamento para o paciente ${id}:`, payload);
+
+    // Mock response based on the requirement
+    const response = {
+      status: "sucesso",
+      mensagem: "Procedimento registrado com sucesso.",
+      procedimento_registrado: {
+        procedimento_realizado_id: Math.floor(Math.random() * 1000) + 900,
+        paciente_id: Number(id),
+        data_procedimento: payload.data_procedimento || new Date().toISOString().split('T')[0],
+        valor_final: payload.valor_final,
+        profissional_id: payload.itens[0]?.profissional_id || 7,
+        financeiro_id: Math.floor(Math.random() * 10000) + 5000
+      }
+    };
+
+    res.status(201).json(response);
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

@@ -65,5 +65,23 @@ export const pacienteService = {
     };
     initialAnamneses.push(newAnamnese);
     return { data: newAnamnese };
+  },
+  registrarLancamento: async (pacienteId: number, payload: any) => {
+    const response = await fetch(`/api/pacientes/${pacienteId}/lancamento`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('Erro ao registrar lançamento');
+    return await response.json();
+  },
+  getHistorico: async (pacienteId: number) => {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    // Mock history
+    return [
+      { date: '16 Mar 2026', title: 'Clareamento Dental', doctor: 'Dra. Ana Costa', type: 'Procedimento' },
+      { date: '10 Fev 2026', title: 'Limpeza (Profilaxia)', doctor: 'Dr. Jorge Silva', type: 'Procedimento' },
+      { date: '05 Fev 2026', title: 'Avaliação Inicial', doctor: 'Dr. Jorge Silva', type: 'Consulta' },
+    ];
   }
 };

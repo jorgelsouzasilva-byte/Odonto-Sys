@@ -7,6 +7,7 @@ import AnamneseModal from "@/components/AnamneseModal"
 import AnamneseViewModal from "@/components/AnamneseViewModal"
 import NovoOrcamentoModal from "@/components/NovoOrcamentoModal"
 import OrcamentoVisualizarModal from "@/components/OrcamentoVisualizarModal"
+import ProcedureLaunchModal from "@/components/ProcedureLaunchModal"
 import { orcamentoService } from "@/services/orcamentoService"
 import { financeiroService } from "@/services/financeiroService"
 import { Anamnese, Orcamento, OrcamentoItem, Financeiro } from "@/types/paciente"
@@ -46,12 +47,15 @@ export default function Patients() {
   const [financeiroHistory, setFinanceiroHistory] = useState<Financeiro[]>([])
   const [isPagamentoModalOpen, setIsPagamentoModalOpen] = useState(false)
   const [selectedLancamento, setSelectedLancamento] = useState<Financeiro | null>(null)
+  const [isProcedureLaunchModalOpen, setIsProcedureLaunchModalOpen] = useState(false)
+  const [historico, setHistorico] = useState<any[]>([])
 
   useEffect(() => {
     if (selectedPatient) {
       loadAnamneses(selectedPatient)
       loadOrcamentos(selectedPatient)
       loadFinanceiro(selectedPatient)
+      loadHistorico(selectedPatient)
     }
   }, [selectedPatient])
 
@@ -68,6 +72,11 @@ export default function Patients() {
   const loadFinanceiro = async (id: number) => {
     const data = await financeiroService.getFinanceiro(id)
     setFinanceiroHistory(data)
+  }
+
+  const loadHistorico = async (id: number) => {
+    const data = await pacienteService.getHistorico(id)
+    setHistorico(data)
   }
 
   const handleAprovarOrcamento = async (id: number) => {
@@ -247,6 +256,12 @@ export default function Patients() {
                       >
                         Anamnese
                       </button>
+                      <button 
+                        onClick={() => setIsProcedureLaunchModalOpen(true)}
+                        className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500"
+                      >
+                        Lançamento
+                      </button>
                       <button className="inline-flex items-center justify-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
                         Nova Consulta
                       </button>
@@ -377,14 +392,10 @@ export default function Patients() {
                   <div className="space-y-6">
                     <div className="flow-root">
                       <ul role="list" className="-mb-8">
-                        {[
-                          { date: '16 Mar 2026', title: 'Clareamento Dental', doctor: 'Dra. Ana Costa', type: 'Procedimento' },
-                          { date: '10 Fev 2026', title: 'Limpeza (Profilaxia)', doctor: 'Dr. Jorge Silva', type: 'Procedimento' },
-                          { date: '05 Fev 2026', title: 'Avaliação Inicial', doctor: 'Dr. Jorge Silva', type: 'Consulta' },
-                        ].map((event, eventIdx) => (
+                        {historico.map((event, eventIdx) => (
                           <li key={eventIdx}>
                             <div className="relative pb-8">
-                              {eventIdx !== 2 ? (
+                              {eventIdx !== historico.length - 1 ? (
                                 <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
                               ) : null}
                               <div className="relative flex space-x-3">
@@ -687,6 +698,15 @@ export default function Patients() {
             }}
             lancamento={selectedLancamento}
             onConfirm={handleConfirmarPagamento}
+          />
+          <ProcedureLaunchModal 
+            isOpen={isProcedureLaunchModalOpen}
+            onClose={() => setIsProcedureLaunchModalOpen(false)}
+            pacienteId={selectedPatient}
+            onSave={() => {
+              loadFinanceiro(selectedPatient)
+              loadHistorico(selectedPatient)
+            }}
           />
         </>
       )}
