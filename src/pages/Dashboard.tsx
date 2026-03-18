@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { 
   Users, 
   Calendar, 
@@ -14,13 +15,13 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { cn } from "@/lib/utils"
 
 const stats = [
-  { name: 'Pacientes a Confirmar', stat: '12', icon: Calendar, change: '12%', changeType: 'increase' },
-  { name: 'Agenda do Dia', stat: '24', icon: Users, change: '5.4%', changeType: 'increase' },
-  { name: 'Estoque Crítico', stat: '3', icon: AlertTriangle, change: '2', changeType: 'decrease' },
-  { name: 'Faturamento (Mês)', stat: 'R$ 45.231', icon: DollarSign, change: '12%', changeType: 'increase' },
-  { name: 'Procedimentos Realizados', stat: '156', icon: Stethoscope, change: '3.2%', changeType: 'increase' },
-  { name: 'Orçamentos Pendentes', stat: '18', icon: FileText, change: '4', changeType: 'decrease' },
-  { name: 'Novos Pacientes', stat: '42', icon: UserPlus, change: '10%', changeType: 'increase' },
+  { name: 'Pacientes a Confirmar', stat: '12', icon: Calendar, change: '12%', changeType: 'increase', href: '/agenda' },
+  { name: 'Agenda do Dia', stat: '24', icon: Users, change: '5.4%', changeType: 'increase', href: '/agenda' },
+  { name: 'Estoque Crítico', stat: '3', icon: AlertTriangle, change: '2', changeType: 'decrease', href: '/estoque' },
+  { name: 'Faturamento (Mês)', stat: 'R$ 45.231', icon: DollarSign, change: '12%', changeType: 'increase', href: '/financeiro' },
+  { name: 'Procedimentos Realizados', stat: '156', icon: Stethoscope, change: '3.2%', changeType: 'increase', href: '/procedimentos' },
+  { name: 'Orçamentos Pendentes', stat: '18', icon: FileText, change: '4', changeType: 'decrease', href: '/pacientes' },
+  { name: 'Novos Pacientes', stat: '42', icon: UserPlus, change: '10%', changeType: 'increase', href: '/pacientes' },
 ]
 
 const data = [
@@ -55,12 +56,13 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.slice(0, 4).map((item) => (
-          <div
+          <Link
             key={item.name}
-            className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 px-4 pt-5 pb-4 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 sm:px-6 sm:pt-6"
+            to={item.href}
+            className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 px-4 pt-5 pb-4 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 sm:px-6 sm:pt-6 hover:ring-indigo-500 dark:hover:ring-indigo-500 transition-all group"
           >
             <dt>
-              <div className="absolute rounded-xl bg-indigo-50 dark:bg-indigo-500/10 p-3">
+              <div className="absolute rounded-xl bg-indigo-50 dark:bg-indigo-500/10 p-3 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 transition-colors">
                 <item.icon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
               </div>
               <p className="ml-16 truncate text-sm font-medium text-slate-500 dark:text-slate-400">
@@ -84,18 +86,19 @@ export default function Dashboard() {
                 {item.change}
               </p>
             </dd>
-          </div>
+          </Link>
         ))}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {stats.slice(4).map((item) => (
-          <div
+          <Link
             key={item.name}
-            className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 px-4 pt-5 pb-4 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 sm:px-6 sm:pt-6"
+            to={item.href}
+            className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 px-4 pt-5 pb-4 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 sm:px-6 sm:pt-6 hover:ring-indigo-500 dark:hover:ring-indigo-500 transition-all group"
           >
             <dt>
-              <div className="absolute rounded-xl bg-indigo-50 dark:bg-indigo-500/10 p-3">
+              <div className="absolute rounded-xl bg-indigo-50 dark:bg-indigo-500/10 p-3 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 transition-colors">
                 <item.icon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
               </div>
               <p className="ml-16 truncate text-sm font-medium text-slate-500 dark:text-slate-400">
@@ -105,7 +108,7 @@ export default function Dashboard() {
             <dd className="ml-16 flex items-baseline pb-1 sm:pb-2">
               <p className="text-2xl font-semibold text-slate-900 dark:text-white">{item.stat}</p>
             </dd>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -143,7 +146,7 @@ export default function Dashboard() {
         <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 overflow-hidden">
           <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <h2 className="text-base font-semibold text-slate-900 dark:text-white">Agenda do Dia</h2>
-            <button className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">Ver toda agenda</button>
+            <Link to="/agenda" className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">Ver toda agenda</Link>
           </div>
           <ul role="list" className="divide-y divide-slate-200 dark:divide-slate-800">
             {appointments.map((appointment) => (

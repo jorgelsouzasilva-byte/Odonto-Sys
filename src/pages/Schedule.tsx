@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react"
+import { useSearchParams } from "react-router-dom"
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -24,6 +25,7 @@ import { AgendaItem, AgendaDashboardStats, CalendarMark, AgendaStatus } from "@/
 
 export default function Schedule() {
   // State
+  const [searchParams] = useSearchParams()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<'dia' | 'semana' | 'mes'>('semana')
   const [items, setItems] = useState<AgendaItem[]>([])
@@ -35,6 +37,17 @@ export default function Schedule() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (id && items.length > 0) {
+      const item = items.find(i => i.id === id)
+      if (item) {
+        setSelectedItem(item)
+        setIsDetailsModalOpen(true)
+      }
+    }
+  }, [searchParams, items])
   
   // Filters (Removed from UI but kept in state for loadData compatibility)
   const [filialId, setFilialId] = useState('todas')

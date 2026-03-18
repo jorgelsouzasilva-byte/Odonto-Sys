@@ -17,7 +17,6 @@ export default function OrcamentoItemModal({ isOpen, onClose, onAdd, toothNumber
   const [procedimentos, setProcedimentos] = useState<Procedimento[]>([]);
   const [selectedProcedimentoId, setSelectedProcedimentoId] = useState<number | ''>('');
   const [selectedSurfaces, setSelectedSurfaces] = useState<string[]>([]);
-  const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [observacoes, setObservacoes] = useState('');
   const [valor, setValor] = useState(0);
 
@@ -59,14 +58,12 @@ export default function OrcamentoItemModal({ isOpen, onClose, onAdd, toothNumber
       procedimentoId: proc.id,
       procedimentoNome: proc.nome,
       valor: valor,
-      formaPagamento,
       observacoes
     });
     
     // Reset form
     setSelectedProcedimentoId('');
     setSelectedSurfaces([]);
-    setFormaPagamento('PIX');
     setObservacoes('');
     setValor(0);
     onClose();
@@ -147,20 +144,6 @@ export default function OrcamentoItemModal({ isOpen, onClose, onAdd, toothNumber
               {procedimentos.map(p => (
                 <option key={p.id} value={p.id}>{p.nome} - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.valor)}</option>
               ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Forma de Pagamento</label>
-            <select
-              value={formaPagamento}
-              onChange={(e) => setFormaPagamento(e.target.value)}
-              className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            >
-              <option value="Dinheiro">Dinheiro</option>
-              <option value="Cartão">Cartão</option>
-              <option value="PIX">PIX</option>
-              <option value="Boleto">Boleto</option>
             </select>
           </div>
 

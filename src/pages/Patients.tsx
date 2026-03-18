@@ -1,13 +1,17 @@
 import { useState, FormEvent, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { Search, Plus, Filter, MoreVertical, FileText, Phone, Mail, Calendar, Stethoscope, Users, X, Activity, ClipboardList, Trash2, Calculator } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { pacienteService } from "@/services/pacienteService"
-import { orcamentoService } from "@/services/orcamentoService"
-import { Anamnese, OrcamentoItem } from "@/types/paciente"
 import AnamneseModal from "@/components/AnamneseModal"
 import AnamneseViewModal from "@/components/AnamneseViewModal"
-import Odontogram from "@/components/Odontogram"
-import OrcamentoItemModal from "@/components/OrcamentoItemModal"
+import NovoOrcamentoModal from "@/components/NovoOrcamentoModal"
+import OrcamentoVisualizarModal from "@/components/OrcamentoVisualizarModal"
+import { orcamentoService } from "@/services/orcamentoService"
+import { financeiroService } from "@/services/financeiroService"
+import { Anamnese, Orcamento, OrcamentoItem, Financeiro } from "@/types/paciente"
+import { CheckCircle2, DollarSign } from "lucide-react"
+import PagamentoModal from "@/components/PagamentoModal"
 
 const initialPatients = [
   { id: 1, nome: 'Maria Silva', telefone: '(11) 98765-4321', email: 'maria.silva@email.com', lastVisit: '10/03/2026', status: 'Ativo' },
@@ -18,8 +22,16 @@ const initialPatients = [
 ]
 
 export default function Patients() {
+  const [searchParams] = useSearchParams()
   const [patients, setPatients] = useState(initialPatients)
   const [selectedPatient, setSelectedPatient] = useState<number | null>(null)
+
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (id) {
+      setSelectedPatient(Number(id))
+    }
+  }, [searchParams])
   const [activeTab, setActiveTab] = useState('dados')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingPatient, setEditingPatient] = useState<any>(null)
@@ -27,63 +39,74 @@ export default function Patients() {
   const [isAnamneseModalOpen, setIsAnamneseModalOpen] = useState(false)
   const [isAnamneseViewModalOpen, setIsAnamneseViewModalOpen] = useState(false)
   const [selectedAnamnese, setSelectedAnamnese] = useState<Anamnese | null>(null)
-  const [orcamentoItens, setOrcamentoItens] = useState<OrcamentoItem[]>([])
-  const [isOrcamentoModalOpen, setIsOrcamentoModalOpen] = useState(false)
-  const [selectedTooth, setSelectedTooth] = useState<number | null>(null)
-  const [desconto, setDesconto] = useState(0)
-
-  const subtotal = orcamentoItens.reduce((acc, item) => acc + item.valor, 0)
-  const totalFinal = subtotal - desconto
-
-  const handleAddOrcamentoItem = (item: Omit<OrcamentoItem, 'id'>) => {
-    const newItem: OrcamentoItem = {
-      ...item,
-      id: Math.random().toString(36).substr(2, 9)
-    }
-    setOrcamentoItens(prev => [...prev, newItem])
-  }
-
-  const handleRemoveOrcamentoItem = (id: string) => {
-    setOrcamentoItens(prev => prev.filter(item => item.id !== id))
-  }
-
-  const handleToothClick = (number: number) => {
-    setSelectedTooth(number)
-    setIsOrcamentoModalOpen(true)
-  }
-
-  const handleSaveOrcamento = async () => {
-    if (!selectedPatient || orcamentoItens.length === 0) return;
-
-    try {
-      await orcamentoService.createOrcamento({
-        pacienteId: selectedPatient,
-        data: new Date().toLocaleDateString('pt-BR'),
-        itens: orcamentoItens,
-        subtotal,
-        desconto,
-        total: totalFinal,
-        status: 'Pendente'
-      });
-      
-      alert('Orçamento salvo com sucesso!');
-      setOrcamentoItens([]);
-      setDesconto(0);
-    } catch (error) {
-      console.error('Erro ao salvar orçamento:', error);
-      alert('Erro ao salvar orçamento.');
-    }
-  }
+  const [orcamentosHistory, setOrcamentosHistory] = useState<Orcamento[]>([])
+  const [isNovoOrcamentoModalOpen, setIsNovoOrcamentoModalOpen] = useState(false)
+  const [isVisualizarOrcamentoModalOpen, setIsVisualizarOrcamentoModalOpen] = useState(false)
+  const [selectedOrcamentoForView, setSelectedOrcamentoForView] = useState<Orcamento | null>(null)
+  const [financeiroHistory, setFinanceiroHistory] = useState<Financeiro[]>([])
+  const [isPagamentoModalOpen, setIsPagamentoModalOpen] = useState(false)
+  const [selectedLancamento, setSelectedLancamento] = useState<Financeiro | null>(null)
 
   useEffect(() => {
     if (selectedPatient) {
       loadAnamneses(selectedPatient)
+      loadOrcamentos(selectedPatient)
+      loadFinanceiro(selectedPatient)
     }
   }, [selectedPatient])
 
   const loadAnamneses = async (id: number) => {
     const response = await pacienteService.getAnamneses(id)
     setAnamneses(response.data)
+  }
+
+  const loadOrcamentos = async (id: number) => {
+    const data = await orcamentoService.getOrcamentos(id)
+    setOrcamentosHistory(data)
+  }
+
+  const loadFinanceiro = async (id: number) => {
+    const data = await financeiroService.getFinanceiro(id)
+    setFinanceiroHistory(data)
+  }
+
+  const handleAprovarOrcamento = async (id: number) => {
+    try {
+      await orcamentoService.aprovarOrcamento(id)
+      if (selectedPatient) {
+        loadOrcamentos(selectedPatient)
+        loadFinanceiro(selectedPatient)
+      }
+      alert('Orçamento aprovado com sucesso! Lançamento financeiro gerado.')
+    } catch (error) {
+      console.error('Erro ao aprovar orçamento:', error)
+      alert('Erro ao aprovar orçamento.')
+    }
+  }
+
+  const handleCancelarOrcamento = async (id: number) => {
+    if (!confirm('Deseja realmente cancelar este orçamento?')) return;
+    try {
+      await orcamentoService.cancelarOrcamento(id)
+      if (selectedPatient) loadOrcamentos(selectedPatient)
+      alert('Orçamento cancelado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao cancelar orçamento:', error)
+      alert('Erro ao cancelar orçamento.')
+    }
+  }
+
+  const handleConfirmarPagamento = async (formaPagamento: string) => {
+    if (!selectedLancamento) return;
+    try {
+      await financeiroService.registrarPagamento(selectedLancamento.id, formaPagamento)
+      if (selectedPatient) loadFinanceiro(selectedPatient)
+      setIsPagamentoModalOpen(false)
+      alert('Pagamento registrado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao registrar pagamento:', error)
+      alert('Erro ao registrar pagamento.')
+    }
   }
 
   const tabs = [
@@ -395,116 +418,157 @@ export default function Patients() {
                   </div>
                 )}
                 {activeTab === 'orcamentos' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Coluna Odontograma */}
-                    <div className="space-y-6">
-                      <Odontogram onToothClick={handleToothClick} />
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Instruções</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Clique em um dente no odontograma para adicionar um procedimento ao orçamento atual.</p>
-                      </div>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-semibold leading-6 text-slate-900 dark:text-white">Histórico de Orçamentos</h3>
+                      <button 
+                        onClick={() => setIsNovoOrcamentoModalOpen(true)}
+                        className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+                      >
+                        Novo Orçamento
+                      </button>
                     </div>
 
-                    {/* Coluna Orçamento */}
-                    <div className="flex flex-col space-y-6">
-                      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full">
-                        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-                          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <ClipboardList className="h-4 w-4 text-indigo-500" />
-                            Itens do Orçamento
-                          </h3>
-                          <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold">
-                            {orcamentoItens.length} itens
-                          </span>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto max-h-[400px]">
-                          {orcamentoItens.length > 0 ? (
-                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                              <thead className="bg-slate-50 dark:bg-slate-800/50 sticky top-0">
-                                <tr>
-                                  <th className="px-4 py-2 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Dente</th>
-                                  <th className="px-4 py-2 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Procedimento</th>
-                                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Valor</th>
-                                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase"></th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {orcamentoItens.map((item) => (
-                                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                      <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-slate-900 dark:text-white">{item.dente}</span>
-                                        <span className="text-[10px] text-slate-400">{item.superficies.join(', ')}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <span className="text-sm text-slate-600 dark:text-slate-400">{item.procedimentoNome}</span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                      <span className="text-sm font-medium text-slate-900 dark:text-white">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
+                    {orcamentosHistory.length > 0 ? (
+                      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                          <thead className="bg-slate-50 dark:bg-slate-800/50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Valor Total</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Forma Pagto</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Obs</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                            {orcamentosHistory.map((orcamento) => (
+                              <tr key={orcamento.id}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">{orcamento.data}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(orcamento.total)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{orcamento.formaPagamento || '-'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={cn(
+                                    "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                                    orcamento.status === 'Aprovado' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : 
+                                    orcamento.status === 'Cancelado' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                                    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                  )}>
+                                    {orcamento.status}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 max-w-[150px] truncate" title={orcamento.observacoes}>
+                                  {orcamento.observacoes || '-'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                  <button 
+                                    onClick={() => {
+                                      setSelectedOrcamentoForView(orcamento)
+                                      setIsVisualizarOrcamentoModalOpen(true)
+                                    }}
+                                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+                                  >
+                                    Visualizar
+                                  </button>
+                                  {orcamento.status === 'Pendente' && (
+                                    <>
                                       <button 
-                                        onClick={() => handleRemoveOrcamentoItem(item.id)}
-                                        className="text-slate-400 hover:text-red-500 transition-colors"
+                                        onClick={() => handleAprovarOrcamento(orcamento.id)}
+                                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300"
                                       >
-                                        <Trash2 className="h-4 w-4" />
+                                        Aprovar
                                       </button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-                              <Calculator className="h-12 w-12 text-slate-300 mb-2" />
-                              <p className="text-sm text-slate-500">Nenhum item adicionado ao orçamento.</p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 space-y-3">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Subtotal</span>
-                            <span className="font-medium text-slate-900 dark:text-white">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotal)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm items-center">
-                            <span className="text-slate-500">Desconto</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-slate-400">R$</span>
-                              <input 
-                                type="number" 
-                                value={desconto}
-                                onChange={(e) => setDesconto(Number(e.target.value))}
-                                className="w-20 text-right bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
-                              />
-                            </div>
-                          </div>
-                          <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <span className="text-base font-bold text-slate-900 dark:text-white">Total Final</span>
-                            <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFinal)}
-                            </span>
-                          </div>
-                          <button 
-                            onClick={handleSaveOrcamento}
-                            disabled={orcamentoItens.length === 0}
-                            className="w-full mt-4 bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Salvar Orçamento
-                          </button>
-                        </div>
+                                      <button 
+                                        onClick={() => handleCancelarOrcamento(orcamento.id)}
+                                        className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                                      >
+                                        Cancelar
+                                      </button>
+                                    </>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
+                    ) : (
+                      <div className="text-center py-12 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
+                        <Calculator className="mx-auto h-12 w-12 text-slate-400" />
+                        <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Nenhum orçamento registrado</h3>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Comece criando o primeiro orçamento para este paciente.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeTab === 'financeiro' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-semibold leading-6 text-slate-900 dark:text-white">Movimentação Financeira</h3>
                     </div>
+
+                    {financeiroHistory.length > 0 ? (
+                      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                          <thead className="bg-slate-50 dark:bg-slate-800/50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrição</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Valor</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Forma</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                            {financeiroHistory.map((lancamento) => (
+                              <tr key={lancamento.id}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">{lancamento.data}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">{lancamento.descricao}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(lancamento.valor)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{lancamento.formaPagamento || '-'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={cn(
+                                    "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                                    lancamento.status === 'Pago' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                  )}>
+                                    {lancamento.status}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  {lancamento.status === 'Pendente' && (
+                                    <button 
+                                      onClick={() => {
+                                        setSelectedLancamento(lancamento)
+                                        setIsPagamentoModalOpen(true)
+                                      }}
+                                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300"
+                                    >
+                                      Registrar Pagamento
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
+                        <DollarSign className="mx-auto h-12 w-12 text-slate-400" />
+                        <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Nenhuma movimentação financeira</h3>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Lançamentos serão gerados automaticamente ao aprovar orçamentos.</p>
+                      </div>
+                    )}
                   </div>
                 )}
                 {/* Outras abas seriam implementadas aqui */}
-                {activeTab !== 'dados' && activeTab !== 'historico' && (
+                {!['dados', 'anamnese', 'historico', 'orcamentos', 'financeiro'].includes(activeTab) && (
                   <div className="text-center py-12">
                     <FileText className="mx-auto h-12 w-12 text-slate-400" />
                     <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Conteúdo em desenvolvimento</h3>
@@ -600,11 +664,29 @@ export default function Patients() {
             anamnese={selectedAnamnese}
             pacienteNome={patients.find(p => p.id === selectedPatient)?.nome || ""}
           />
-          <OrcamentoItemModal 
-            isOpen={isOrcamentoModalOpen}
-            onClose={() => setIsOrcamentoModalOpen(false)}
-            onAdd={handleAddOrcamentoItem}
-            toothNumber={selectedTooth}
+          <NovoOrcamentoModal 
+            isOpen={isNovoOrcamentoModalOpen}
+            onClose={() => setIsNovoOrcamentoModalOpen(false)}
+            pacienteId={selectedPatient}
+            onSave={() => loadOrcamentos(selectedPatient)}
+          />
+          <OrcamentoVisualizarModal 
+            isOpen={isVisualizarOrcamentoModalOpen}
+            onClose={() => {
+              setIsVisualizarOrcamentoModalOpen(false)
+              setSelectedOrcamentoForView(null)
+            }}
+            orcamento={selectedOrcamentoForView}
+            pacienteNome={patients.find(p => p.id === selectedPatient)?.nome}
+          />
+          <PagamentoModal 
+            isOpen={isPagamentoModalOpen}
+            onClose={() => {
+              setIsPagamentoModalOpen(false)
+              setSelectedLancamento(null)
+            }}
+            lancamento={selectedLancamento}
+            onConfirm={handleConfirmarPagamento}
           />
         </>
       )}

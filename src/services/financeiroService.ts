@@ -1,218 +1,164 @@
-import { 
-  Transaction, 
-  FinancialSummary, 
-  FinancialFilters, 
-  FinancialResponse, 
-  PeriodNav, 
-  ExportResponse 
-} from "../types/financeiro";
 
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: 601,
-    data: "2026-03-16",
-    descricao: "Clareamento Dental - Maria Silva",
-    categoria: "Procedimento",
-    metodo: "Cartão de Crédito",
-    status: "Pago",
-    tipo: "receita",
-    valor: 850.00,
-    filial_id: 1
-  },
-  {
-    id: 602,
-    data: "2026-03-15",
-    descricao: "Compra de Materiais (Dental Cremer)",
-    categoria: "Estoque",
-    metodo: "Boleto",
-    status: "Pago",
-    tipo: "despesa",
-    valor: -1240.50,
-    filial_id: 1
-  },
-  {
-    id: 603,
-    data: "2026-03-15",
-    descricao: "Limpeza - João Santos",
-    categoria: "Procedimento",
-    metodo: "Pix",
-    status: "Pendente",
-    tipo: "receita",
-    valor: 250.00,
-    filial_id: 1
-  },
-  {
-    id: 604,
-    data: "2026-03-14",
-    descricao: "Conta de Luz",
-    categoria: "Despesas Fixas",
-    metodo: "Débito Automático",
-    status: "Pago",
-    tipo: "despesa",
-    valor: -450.00,
-    filial_id: 1
-  },
-  {
-    id: 605,
-    data: "2026-03-14",
-    descricao: "Manutenção Equipamento",
-    categoria: "Patrimônio",
-    metodo: "Pix",
-    status: "Pago",
-    tipo: "despesa",
-    valor: -300.00,
-    filial_id: 1
-  },
-  {
-    id: 606,
-    data: "2026-03-13",
-    descricao: "Canal - Pedro Costa (Parcela 1/3)",
-    categoria: "Procedimento",
-    metodo: "Cartão de Crédito",
-    status: "Pago",
-    tipo: "receita",
-    valor: 400.00,
-    filial_id: 1
-  }
-];
+import { Financeiro } from "../types/paciente";
 
-const getStoredTransactions = (): Transaction[] => {
-  const stored = localStorage.getItem('odonto_transactions');
+const getStoredFinanceiro = (): Financeiro[] => {
+  const stored = localStorage.getItem('odonto_financeiro');
   if (stored) return JSON.parse(stored);
-  localStorage.setItem('odonto_transactions', JSON.stringify(MOCK_TRANSACTIONS));
-  return MOCK_TRANSACTIONS;
+  return [];
 };
 
-const saveTransactions = (transactions: Transaction[]) => {
+const saveFinanceiro = (financeiro: Financeiro[]) => {
+  localStorage.setItem('odonto_financeiro', JSON.stringify(financeiro));
+};
+
+const initialTransactions: any[] = [
+  { id: 1001, data: '2026-03-15', descricao: 'Consulta Maria Silva', categoria: 'Ortodontia', metodo: 'Pix', status: 'Pago', tipo: 'receita', valor: 250.00, filial_id: 1 },
+  { id: 1002, data: '2026-03-16', descricao: 'Aluguel Sala', categoria: 'Infraestrutura', metodo: 'Boleto', status: 'Pago', tipo: 'despesa', valor: -2500.00, filial_id: 1 },
+  { id: 1003, data: '2026-03-17', descricao: 'Implante João Santos', categoria: 'Implantodontia', metodo: 'Cartão de Crédito', status: 'Pendente', tipo: 'receita', valor: 1500.00, filial_id: 1 },
+];
+
+const getStoredTransactions = (): any[] => {
+  const stored = localStorage.getItem('odonto_transactions');
+  if (stored) return JSON.parse(stored);
+  return initialTransactions;
+};
+
+const saveTransactions = (transactions: any[]) => {
   localStorage.setItem('odonto_transactions', JSON.stringify(transactions));
 };
 
 export const financeiroService = {
-  async getTransactions(filters: FinancialFilters): Promise<FinancialResponse> {
-    await new Promise(resolve => setTimeout(resolve, 250));
+  async getFinanceiro(pacienteId: number): Promise<Financeiro[]> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const financeiro = getStoredFinanceiro();
+    return financeiro.filter(f => f.pacienteId === pacienteId);
+  },
+
+  async createLancamento(data: Omit<Financeiro, 'id'>): Promise<Financeiro> {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const financeiro = getStoredFinanceiro();
+    const newLancamento: Financeiro = {
+      ...data,
+      id: Math.max(0, ...financeiro.map(f => f.id)) + 1
+    };
+    saveFinanceiro([newLancamento, ...financeiro]);
+
+    // Sync with general transactions
+    const transactions = getStoredTransactions();
+    transactions.unshift({
+      id: newLancamento.id,
+      data: newLancamento.data,
+      descricao: newLancamento.descricao,
+      categoria: 'Tratamento',
+      metodo: newLancamento.formaPagamento || '-',
+      status: newLancamento.status,
+      tipo: 'receita',
+      valor: newLancamento.valor,
+      filial_id: 1
+    });
+    saveTransactions(transactions);
+
+    return newLancamento;
+  },
+
+  async registrarPagamento(id: number, formaPagamento: string): Promise<Financeiro> {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const financeiro = getStoredFinanceiro();
+    const index = financeiro.findIndex(f => f.id === id);
+    if (index === -1) throw new Error("Lançamento não encontrado");
     
-    let filtered = getStoredTransactions();
+    const updated = { 
+      ...financeiro[index], 
+      status: 'Pago' as const,
+      formaPagamento 
+    };
+    financeiro[index] = updated;
+    saveFinanceiro(financeiro);
+
+    // Sync with general transactions
+    const transactions = getStoredTransactions();
+    const gIndex = transactions.findIndex(t => t.id === id);
+    if (gIndex !== -1) {
+      transactions[gIndex].status = 'Pago';
+      transactions[gIndex].metodo = formaPagamento;
+      saveTransactions(transactions);
+    }
+
+    return updated;
+  },
+
+  // General dashboard methods (for Financial.tsx)
+  async getTransactions(filters: any) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    let all = getStoredTransactions();
     
     if (filters.type && filters.type !== 'all') {
-      filtered = filtered.filter(t => t.tipo === filters.type);
+      all = all.filter((t: any) => t.tipo === filters.type);
     }
-    
     if (filters.status && filters.status !== 'all') {
-      filtered = filtered.filter(t => t.status === filters.status);
+      all = all.filter((t: any) => t.status === filters.status);
     }
-
-    if (filters.filial_id) {
-      filtered = filtered.filter(t => t.filial_id === filters.filial_id);
-    }
-
-    if (filters.categoria) {
-      filtered = filtered.filter(t => t.categoria === filters.categoria);
-    }
-    
     if (filters.search) {
       const search = filters.search.toLowerCase();
-      filtered = filtered.filter(t => 
-        t.descricao.toLowerCase().includes(search) || 
-        t.categoria.toLowerCase().includes(search)
-      );
+      all = all.filter((t: any) => t.descricao.toLowerCase().includes(search));
     }
 
-    // Sort by date descending by default
-    filtered.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-
-    const page = filters.page || 1;
-    const perPage = filters.per_page || 20;
-    const total = filtered.length;
-    const start = (page - 1) * perPage;
-    const end = start + perPage;
-    
     return {
-      meta: {
-        page,
-        per_page: perPage,
-        total,
-        period: filters.period,
-        start_date: filters.start_date || "2026-03-01",
-        end_date: filters.end_date || "2026-03-31"
-      },
-      data: filtered.slice(start, end)
+      data: all,
+      meta: { total: all.length }
     };
   },
 
-  async getSummary(filters: FinancialFilters): Promise<FinancialSummary> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const transactions = getStoredTransactions();
-    
-    const receitas = transactions
-      .filter(t => t.tipo === 'receita' && t.status === 'Pago')
-      .reduce((acc, t) => acc + t.valor, 0);
-      
-    const despesas = Math.abs(transactions
-      .filter(t => t.tipo === 'despesa' && t.status === 'Pago')
-      .reduce((acc, t) => acc + t.valor, 0));
-
-    const a_receber = transactions
-      .filter(t => t.tipo === 'receita' && t.status === 'Pendente')
-      .reduce((acc, t) => acc + t.valor, 0);
-
+  async getSummary(filters: any) {
+    const { data } = await this.getTransactions(filters);
+    const receitas = data.filter((t: any) => t.tipo === 'receita').reduce((acc: number, t: any) => acc + t.valor, 0);
+    const despesas = data.filter((t: any) => t.tipo === 'despesa').reduce((acc: number, t: any) => acc + Math.abs(t.valor), 0);
     return {
       receitas,
       despesas,
       saldo: receitas - despesas,
-      a_receber_hoje: a_receber
+      a_receber_hoje: data.filter((t: any) => t.status === 'Pendente' && t.tipo === 'receita').reduce((acc: number, t: any) => acc + t.valor, 0)
     };
   },
 
-  async createTransaction(data: Omit<Transaction, 'id'>): Promise<Transaction> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const transactions = getStoredTransactions();
-    const newTransaction = {
-      ...data,
-      id: Math.max(0, ...transactions.map(t => t.id)) + 1
+  async getPeriodNav(period: string, date: string) {
+    return {
+      current: { start_date: '2026-03-01', end_date: '2026-03-31' },
+      prev: { start_date: '2026-02-01', end_date: '2026-02-28' },
+      next: { start_date: '2026-04-01', end_date: '2026-04-30' }
     };
-    saveTransactions([newTransaction, ...transactions]);
-    return newTransaction;
   },
 
-  async updateTransaction(id: number, data: Partial<Transaction>): Promise<Transaction> {
-    await new Promise(resolve => setTimeout(resolve, 500));
+  async export(filters: any) {
+    return {
+      mensagem: 'Relatório gerado com sucesso',
+      file_name: `relatorio_financeiro_${filters.format}.pdf`,
+      file_url: '#'
+    };
+  },
+
+  async updateTransaction(id: number, data: any) {
     const transactions = getStoredTransactions();
     const index = transactions.findIndex(t => t.id === id);
-    if (index === -1) throw new Error("Transação não encontrada");
-    
-    const updated = { ...transactions[index], ...data };
-    transactions[index] = updated;
-    saveTransactions(transactions);
-    return updated;
-  },
-
-  async deleteTransaction(id: number): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const transactions = getStoredTransactions();
-    saveTransactions(transactions.filter(t => t.id !== id));
-  },
-
-  async export(filters: FinancialFilters & { format: 'pdf' | 'xls' }): Promise<ExportResponse> {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    if (!filters.format) {
-      throw { status: 400, error: "Formato inválido para exportação" };
+    if (index !== -1) {
+      transactions[index] = { ...transactions[index], ...data };
+      saveTransactions(transactions);
+      return transactions[index];
     }
-
-    return {
-      file_url: `https://mockserver.local/exports/financeiro_2026-03_report.${filters.format}`,
-      file_name: `financeiro_2026-03_report.${filters.format}`,
-      mensagem: "Exportação gerada com sucesso"
-    };
+    throw new Error('Transação não encontrada');
   },
 
-  async getPeriodNav(period: string, currentDate: string): Promise<PeriodNav> {
-    await new Promise(resolve => setTimeout(resolve, 120));
-    // Simplified mock logic
-    return {
-      current: { start_date: "2026-03-01", end_date: "2026-03-31" },
-      prev: { start_date: "2026-02-01", end_date: "2026-02-28" },
-      next: { start_date: "2026-04-01", end_date: "2026-04-30" }
-    };
+  async createTransaction(data: any) {
+    const transactions = getStoredTransactions();
+    const newTrans = { ...data, id: Date.now() };
+    transactions.unshift(newTrans);
+    saveTransactions(transactions);
+    return newTrans;
+  },
+
+  async deleteTransaction(id: number) {
+    const transactions = getStoredTransactions();
+    const filtered = transactions.filter(t => t.id !== id);
+    saveTransactions(filtered);
   }
 };

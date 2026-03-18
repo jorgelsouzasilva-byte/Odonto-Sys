@@ -1,5 +1,6 @@
 
 import { Orcamento, OrcamentoItem } from "../types/paciente";
+import { financeiroService } from "./financeiroService";
 
 const MOCK_ORCAMENTOS: Orcamento[] = [];
 
@@ -29,5 +30,40 @@ export const orcamentoService = {
     };
     saveOrcamentos([newOrcamento, ...orcamentos]);
     return newOrcamento;
+  },
+
+  async aprovarOrcamento(id: number): Promise<Orcamento> {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const orcamentos = getStoredOrcamentos();
+    const index = orcamentos.findIndex(o => o.id === id);
+    if (index === -1) throw new Error("Orçamento não encontrado");
+    
+    const updated = { ...orcamentos[index], status: 'Aprovado' as const };
+    orcamentos[index] = updated;
+    saveOrcamentos(orcamentos);
+
+    // Create financial entry
+    await financeiroService.createLancamento({
+      pacienteId: updated.pacienteId,
+      data: new Date().toLocaleDateString('pt-BR'),
+      descricao: `Orçamento #${updated.id} aprovado`,
+      valor: updated.total,
+      formaPagamento: updated.formaPagamento,
+      status: 'Pendente'
+    });
+
+    return updated;
+  },
+
+  async cancelarOrcamento(id: number): Promise<Orcamento> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const orcamentos = getStoredOrcamentos();
+    const index = orcamentos.findIndex(o => o.id === id);
+    if (index === -1) throw new Error("Orçamento não encontrado");
+    
+    const updated = { ...orcamentos[index], status: 'Cancelado' as const };
+    orcamentos[index] = updated;
+    saveOrcamentos(orcamentos);
+    return updated;
   }
 };

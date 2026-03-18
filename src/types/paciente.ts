@@ -64,5 +64,17 @@ export interface Orcamento {
   subtotal: number;
   desconto: number;
   total: number;
-  status: 'Pendente' | 'Aprovado' | 'Recusado';
+  status: 'Pendente' | 'Aprovado' | 'Cancelado' | 'Recusado';
+  formaPagamento?: string;
+  observacoes?: string;
+}
+
+export interface Financeiro {
+  id: number;
+  pacienteId: number;
+  data: string;
+  descricao: string;
+  valor: number;
+  formaPagamento?: string;
+  status: 'Pendente' | 'Pago' | 'Cancelado';
 }

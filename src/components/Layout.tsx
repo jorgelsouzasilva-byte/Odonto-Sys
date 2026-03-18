@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Outlet, Link, useLocation } from "react-router-dom"
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom"
 import { 
   LayoutDashboard, 
   Users, 
@@ -14,12 +14,14 @@ import {
   Menu,
   X,
   Bell,
-  Search,
   Moon,
-  Sun
+  Sun,
+  LogOut
 } from "lucide-react"
 import { useTheme } from "./ThemeProvider"
+import { useAuth } from "./AuthContext"
 import { cn } from "@/lib/utils"
+import GlobalSearch from "./GlobalSearch"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -37,7 +39,14 @@ const navigation = [
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
+  const { user, logout } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex">
@@ -87,6 +96,27 @@ export default function Layout() {
                 })}
               </nav>
             </div>
+            <div className="flex flex-shrink-0 border-t border-slate-200 dark:border-slate-800 p-4">
+              <div className="flex items-center w-full justify-between">
+                <div className="flex items-center">
+                  <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                    {user?.nome.charAt(0)}
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{user?.nome}</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      {user?.roles.includes('admin_unidade') ? 'Administrador' : 'Profissional'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -129,14 +159,25 @@ export default function Layout() {
             </nav>
           </div>
           <div className="flex flex-shrink-0 border-t border-slate-200 dark:border-slate-800 p-4">
-            <div className="flex items-center w-full">
-              <div className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-sm font-medium">
-                JS
+            <div className="flex items-center w-full justify-between">
+              <div className="flex items-center">
+                <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                  {user?.nome.charAt(0)}
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{user?.nome}</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    {user?.roles.includes('admin_unidade') ? 'Administrador' : 'Profissional'}
+                  </p>
+                </div>
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Dr. Jorge Silva</p>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Administrador</p>
-              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10"
+                title="Sair"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -154,23 +195,7 @@ export default function Layout() {
           </button>
           <div className="flex flex-1 justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex flex-1 items-center">
-              <div className="flex w-full md:ml-0">
-                <label htmlFor="search-field" className="sr-only">
-                  Busca global
-                </label>
-                <div className="relative w-full text-slate-400 focus-within:text-slate-600 dark:focus-within:text-slate-300 max-w-md">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center">
-                    <Search className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <input
-                    id="search-field"
-                    className="block h-full w-full border-transparent py-2 pl-8 pr-3 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:border-transparent focus:placeholder-slate-400 focus:outline-none focus:ring-0 sm:text-sm bg-transparent"
-                    placeholder="Buscar pacientes, agendamentos..."
-                    type="search"
-                    name="search"
-                  />
-                </div>
-              </div>
+              <GlobalSearch />
             </div>
             <div className="ml-4 flex items-center md:ml-6 space-x-4">
               <div className="hidden sm:flex items-center space-x-2 mr-2">
