@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Filter, Package, AlertTriangle, Calendar, ArrowUpRight, ArrowDownRight, Barcode } from "lucide-react"
+import { Plus, Search, Filter, Package, AlertTriangle, Calendar, ArrowUpRight, ArrowDownRight, Barcode, Download } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { 
   InventoryItem, 
@@ -57,6 +57,33 @@ export default function Inventory() {
     setIsExitOpen(true)
   }
 
+  const handleExport = async () => {
+    try {
+      // Simulate API call to /api/estoque/export
+      console.log("Exporting inventory with filters:", filters)
+      
+      // In a real app, this would be:
+      // const response = await fetch(`/api/estoque/export?format=pdf&${new URLSearchParams(filters as any).toString()}`)
+      // const data = await response.json()
+      // window.open(data.file_url)
+      
+      alert("Exportação iniciada! O arquivo PDF será baixado em instantes.")
+      
+      // Simulate download
+      setTimeout(() => {
+        const link = document.createElement('a')
+        link.href = '#'
+        link.download = 'estoque.pdf'
+        document.body.appendChild(link)
+        // link.click() // Commented out to avoid actual download in preview
+        document.body.removeChild(link)
+        console.log("Download simulated")
+      }, 1500)
+    } catch (error) {
+      console.error("Erro ao exportar estoque", error)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -82,6 +109,13 @@ export default function Inventory() {
             Saída
           </button>
           <button
+            onClick={handleExport}
+            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:ring-gray-600 transition-all"
+          >
+            <Download className="-ml-0.5 mr-1.5 h-4 w-4" />
+            Exportar
+          </button>
+          <button
             onClick={() => setIsNewItemOpen(true)}
             className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all"
           >
@@ -97,7 +131,7 @@ export default function Inventory() {
         <StatCard label="Baixo Estoque" value={stats?.baixo_estoque || 0} icon={AlertTriangle} color="amber" />
         <StatCard label="Crítico" value={stats?.critico || 0} icon={AlertTriangle} color="red" />
         <StatCard label="Vencidos" value={stats?.vencidos || 0} icon={Calendar} color="red" />
-        <StatCard label="Vencendo (30d)" value={stats?.vencendo_30 || 0} icon={Calendar} color="orange" />
+        <StatCard label="Vencendo em 30 dias" value={stats?.vencendo_30 || 0} icon={Calendar} color="orange" />
       </div>
 
       {/* Filters */}
@@ -154,20 +188,22 @@ export default function Inventory() {
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Material</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Categoria</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Quantidade</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Mínimo</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Lote/Validade</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Última Atu.</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Lote</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Validade</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Última Atualização</th>
               <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500">Carregando...</td>
+                <td colSpan={9} className="px-6 py-10 text-center text-sm text-gray-500">Carregando...</td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500">Nenhum item encontrado.</td>
+                <td colSpan={9} className="px-6 py-10 text-center text-sm text-gray-500">Nenhum item encontrado.</td>
               </tr>
             ) : (
               items.map((item) => (
@@ -184,12 +220,12 @@ export default function Inventory() {
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{item.categoria}</td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {item.quantidade} {item.unidade}(s)
-                      </span>
-                      <span className="text-xs text-gray-500">Mín: {item.minimo}</span>
-                    </div>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {item.quantidade} {item.unidade}(s)
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {item.minimo} {item.unidade}(s)
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <span className={cn(
@@ -201,16 +237,16 @@ export default function Inventory() {
                       {item.status}
                     </span>
                   </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-white">
+                    {item.lote || "-"}
+                  </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-gray-900 dark:text-white">{item.lote || "-"}</span>
-                      <span className={cn(
-                        "text-xs",
-                        item.validade && new Date(item.validade) < new Date() ? "text-red-500 font-medium" : "text-gray-500"
-                      )}>
-                        {item.validade ? new Date(item.validade).toLocaleDateString() : "-"}
-                      </span>
-                    </div>
+                    <span className={cn(
+                      "text-sm",
+                      item.validade && new Date(item.validade) < new Date() ? "text-red-500 font-medium" : "text-gray-500 dark:text-gray-400"
+                    )}>
+                      {item.validade ? new Date(item.validade).toLocaleDateString() : "-"}
+                    </span>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{item.ultima_atualizacao}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">

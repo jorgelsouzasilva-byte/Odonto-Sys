@@ -6,7 +6,7 @@ const STORAGE_KEY = "odontosys_estoque";
 const getInitialData = (): InventoryItem[] => [
   {
     id: 1,
-    material: "Resina Composta Z350",
+    nome: "Resina Composta Z350",
     categoria: "Restauração",
     quantidade: 15,
     minimo: 10,
@@ -15,7 +15,46 @@ const getInitialData = (): InventoryItem[] => [
     validade: "2027-01-10",
     ultima_atualizacao: "2026-03-10",
     unidade: "Seringa",
-    nome: "Resina Composta Z350"
+    barcode: "7891234567890"
+  },
+  {
+    id: 2,
+    nome: "Anestésico Lidocaína 2%",
+    categoria: "Anestésicos",
+    quantidade: 5,
+    minimo: 20,
+    status: "Crítico",
+    lote: "L2025B",
+    validade: "2026-04-15",
+    ultima_atualizacao: "2026-03-12",
+    unidade: "Caixa",
+    barcode: "7890001112223"
+  },
+  {
+    id: 3,
+    nome: "Luvas de Procedimento M",
+    categoria: "Descartáveis",
+    quantidade: 12,
+    minimo: 15,
+    status: "Baixo",
+    lote: "L2026C",
+    validade: "2028-05-20",
+    ultima_atualizacao: "2026-03-15",
+    unidade: "Caixa",
+    barcode: "7893334445556"
+  },
+  {
+    id: 4,
+    nome: "Máscara Descartável",
+    categoria: "EPI",
+    quantidade: 0,
+    minimo: 10,
+    status: "Crítico",
+    lote: "L2024D",
+    validade: "2026-02-01",
+    ultima_atualizacao: "2026-02-28",
+    unidade: "Pacote",
+    barcode: "7896667778889"
   }
 ] as any;
 
