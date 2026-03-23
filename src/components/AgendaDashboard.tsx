@@ -29,7 +29,7 @@ export const AgendaDashboard: React.FC<AgendaDashboardProps> = ({ stats }) => {
     {
       id: 'agendas_total_dia',
       label: 'Total do Dia',
-      value: stats.total_dia,
+      value: stats.total_dia || 0,
       icon: Calendar,
       color: 'text-zinc-600',
       bg: 'bg-zinc-50'

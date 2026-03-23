@@ -1,51 +1,59 @@
 
+import { 
+  collection, 
+  getDocs, 
+  getDoc, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  orderBy,
+  serverTimestamp
+} from "firebase/firestore";
+import { db } from "../firebase";
 import { Orcamento, OrcamentoItem } from "../types/paciente";
 import { financeiroService } from "./financeiroService";
 
-const MOCK_ORCAMENTOS: Orcamento[] = [];
-
-const getStoredOrcamentos = (): Orcamento[] => {
-  const stored = localStorage.getItem('odonto_orcamentos');
-  if (stored) return JSON.parse(stored);
-  return MOCK_ORCAMENTOS;
-};
-
-const saveOrcamentos = (orcamentos: Orcamento[]) => {
-  localStorage.setItem('odonto_orcamentos', JSON.stringify(orcamentos));
-};
-
 export const orcamentoService = {
-  async getOrcamentos(pacienteId: number): Promise<Orcamento[]> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const orcamentos = getStoredOrcamentos();
-    return orcamentos.filter(o => o.pacienteId === pacienteId);
+  async getOrcamentos(pacienteId: string): Promise<Orcamento[]> {
+    const q = query(
+      collection(db, "orcamentos"),
+      where("pacienteId", "==", pacienteId),
+      orderBy("data", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Orcamento[];
   },
 
   async createOrcamento(data: Omit<Orcamento, 'id'>): Promise<Orcamento> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const orcamentos = getStoredOrcamentos();
-    const newOrcamento: Orcamento = {
+    const docRef = await addDoc(collection(db, "orcamentos"), {
       ...data,
-      id: Math.max(0, ...orcamentos.map(o => o.id)) + 1
-    };
-    saveOrcamentos([newOrcamento, ...orcamentos]);
-    return newOrcamento;
+      createdAt: serverTimestamp()
+    });
+    return {
+      ...data,
+      id: docRef.id
+    } as Orcamento;
   },
 
-  async aprovarOrcamento(id: number): Promise<Orcamento> {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const orcamentos = getStoredOrcamentos();
-    const index = orcamentos.findIndex(o => o.id === id);
-    if (index === -1) throw new Error("Orçamento não encontrado");
+  async aprovarOrcamento(id: string): Promise<Orcamento> {
+    const docRef = doc(db, "orcamentos", id);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) throw new Error("Orçamento não encontrado");
     
-    const updated = { ...orcamentos[index], status: 'Aprovado' as const };
-    orcamentos[index] = updated;
-    saveOrcamentos(orcamentos);
+    const currentData = docSnap.data() as Orcamento;
+    await updateDoc(docRef, { status: 'Aprovado' });
+    
+    const updated = { ...currentData, id: docSnap.id, status: 'Aprovado' as const };
 
     // Create financial entry
     await financeiroService.createLancamento({
       pacienteId: updated.pacienteId,
-      data: new Date().toLocaleDateString('pt-BR'),
+      data: new Date().toISOString().split('T')[0],
       descricao: `Orçamento #${updated.id} aprovado`,
       valor: updated.total,
       formaPagamento: updated.formaPagamento,
@@ -55,15 +63,10 @@ export const orcamentoService = {
     return updated;
   },
 
-  async cancelarOrcamento(id: number): Promise<Orcamento> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const orcamentos = getStoredOrcamentos();
-    const index = orcamentos.findIndex(o => o.id === id);
-    if (index === -1) throw new Error("Orçamento não encontrado");
-    
-    const updated = { ...orcamentos[index], status: 'Cancelado' as const };
-    orcamentos[index] = updated;
-    saveOrcamentos(orcamentos);
-    return updated;
+  async cancelarOrcamento(id: string): Promise<Orcamento> {
+    const docRef = doc(db, "orcamentos", id);
+    await updateDoc(docRef, { status: 'Cancelado' });
+    const docSnap = await getDoc(docRef);
+    return { id: docSnap.id, ...docSnap.data() } as Orcamento;
   }
 };

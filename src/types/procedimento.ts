@@ -1,7 +1,7 @@
 export type Especialidade = 'Estética' | 'Endodontia' | 'Cirurgia' | 'Prevenção' | 'Dentística' | 'Ortodontia' | 'Implantodontia';
 
 export interface Procedimento {
-  id: number;
+  id: string;
   codigo: string;
   nome: string;
   especialidade: Especialidade;

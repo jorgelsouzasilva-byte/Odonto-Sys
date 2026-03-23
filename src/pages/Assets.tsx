@@ -12,14 +12,14 @@ export default function Assets() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
-  const [filterBranch, setFilterBranch] = useState<number | "">("")
+  const [filterBranch, setFilterBranch] = useState<string | "">("")
 
   // Modals state
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<Patrimonio | null>(null)
-  const [activeMenu, setActiveMenu] = useState<number | null>(null)
+  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const loadAssets = async () => {
     setLoading(true)
@@ -63,7 +63,7 @@ export default function Assets() {
     setActiveMenu(null)
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover este item?")) return
     try {
       await patrimonioService.delete(id)
@@ -107,12 +107,12 @@ export default function Assets() {
             
             <select
               value={filterBranch}
-              onChange={(e) => setFilterBranch(e.target.value === "" ? "" : Number(e.target.value))}
+              onChange={(e) => setFilterBranch(e.target.value)}
               className="rounded-md border-0 py-1.5 text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-600 sm:text-sm bg-white dark:bg-slate-900"
             >
               <option value="">Todas Filiais</option>
-              <option value={1}>Matriz</option>
-              <option value={2}>Filial Centro</option>
+              <option value="1">Matriz</option>
+              <option value="2">Filial Centro</option>
             </select>
 
             <select

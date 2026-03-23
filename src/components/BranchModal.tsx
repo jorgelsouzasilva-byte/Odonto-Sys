@@ -6,7 +6,7 @@ interface BranchModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
-  branchId?: number | null
+  branchId?: string | null
 }
 
 export default function BranchModal({ isOpen, onClose, onSuccess, branchId }: BranchModalProps) {
@@ -53,7 +53,7 @@ export default function BranchModal({ isOpen, onClose, onSuccess, branchId }: Br
     setFieldErrors({})
   }
 
-  const loadBranchData = async (id: number) => {
+  const loadBranchData = async (id: string) => {
     setLoading(true)
     try {
       const data = await filialService.getFilialById(id)
@@ -66,7 +66,7 @@ export default function BranchModal({ isOpen, onClose, onSuccess, branchId }: Br
         cnpj: data.cnpj,
         observacoes: data.observacoes || "",
         horario_funcionamento: data.horario_funcionamento || "",
-        responsavel_id: data.responsavel?.id.toString() || ""
+        responsavel_id: data.responsavel?.id || ""
       })
     } catch (err: any) {
       setError("Erro ao carregar dados da filial.")

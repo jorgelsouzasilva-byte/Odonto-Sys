@@ -5,7 +5,7 @@ export type InventoryStatus = "Normal" | "Baixo" | "Crítico" | "Vencido" | "Ven
 export type ExitReason = "Uso em Procedimento" | "Perda" | "Vencimento" | "Transferência" | "Outros";
 
 export interface InventoryItem {
-  id: number;
+  id: string;
   barcode?: string;
   nome: string;
   categoria: InventoryCategory;
@@ -20,7 +20,7 @@ export interface InventoryItem {
 }
 
 export interface StockEntry {
-  item_id: number;
+  item_id: string;
   quantidade: number;
   lote?: string;
   validade?: string;
@@ -31,7 +31,7 @@ export interface StockEntry {
 }
 
 export interface StockExit {
-  item_id: number;
+  item_id: string;
   quantidade: number;
   motivo: ExitReason;
 }

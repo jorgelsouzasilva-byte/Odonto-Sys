@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "Paciente": {
+      "title": "Paciente",
+      "description": "Dados cadastrais do paciente",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string", "description": "Nome completo" },
+        "telefone": { "type": "string", "description": "Telefone de contato" },
+        "email": { "type": "string", "format": "email", "description": "E-mail de contato" },
+        "status": { "type": "string", "enum": ["Ativo", "Inativo"], "description": "Status do cadastro" },
+        "cpf": { "type": "string", "description": "CPF do paciente" },
+        "data_nascimento": { "type": "string", "format": "date", "description": "Data de nascimento" },
+        "genero": { "type": "string", "description": "Gênero" },
+        "endereco": { "type": "string", "description": "Endereço completo" }
+      },
+      "required": ["nome", "status"]
+    },
+    "Anamnese": {
+      "title": "Anamnese",
+      "description": "Histórico de saúde do paciente",
+      "type": "object",
+      "properties": {
+        "pacienteId": { "type": "string", "description": "ID do paciente" },
+        "profissionalId": { "type": "string", "description": "ID do profissional" },
+        "profissional": { "type": "string", "description": "Nome do profissional" },
+        "data": { "type": "string", "format": "date-time", "description": "Data da anamnese" },
+        "queixa_principal": { "type": "string" },
+        "tratamento_medico": { "type": "boolean" },
+        "medicamentos": { "type": "string" },
+        "alergias": { "type": "string" },
+        "hospitalizacoes": { "type": "string" },
+        "doencas": { "type": "array", "items": { "type": "string" } },
+        "sensibilidade": { "type": "boolean" },
+        "sangramento": { "type": "boolean" },
+        "bruxismo": { "type": "boolean" },
+        "ultima_consulta": { "type": "string" },
+        "reacao_anestesia": { "type": "string" },
+        "fuma": { "type": "boolean" },
+        "alcool": { "type": "boolean" },
+        "cafe": { "type": "boolean" },
+        "mastiga_objetos": { "type": "boolean" },
+        "gestante": { "type": "boolean" },
+        "amamentando": { "type": "boolean" },
+        "cicatrizacao": { "type": "boolean" },
+        "coagulacao": { "type": "boolean" },
+        "observacoes": { "type": "string" },
+        "resumo": { "type": "string" }
+      },
+      "required": ["pacienteId", "data", "queixa_principal"]
+    },
+    "ProcedimentoRealizado": {
+      "title": "Procedimento Realizado",
+      "description": "Registro de procedimento executado no paciente",
+      "type": "object",
+      "properties": {
+        "paciente_id": { "type": "string" },
+        "procedimento_id": { "type": "string" },
+        "procedimento_nome": { "type": "string" },
+        "profissional_id": { "type": "string" },
+        "profissional_nome": { "type": "string" },
+        "data_procedimento": { "type": "string", "format": "date" },
+        "valor_base": { "type": "number" },
+        "desconto": { "type": "number" },
+        "valor_final": { "type": "number" },
+        "dentes_afetados": { "type": "array", "items": { "type": "object" } },
+        "observacoes": { "type": "string" },
+        "financeiro_id": { "type": "string" }
+      },
+      "required": ["paciente_id", "procedimento_id", "profissional_id", "data_procedimento", "valor_final"]
+    },
+    "Financeiro": {
+      "title": "Financeiro",
+      "description": "Lançamento financeiro (receitas/despesas)",
+      "type": "object",
+      "properties": {
+        "paciente_id": { "type": "string" },
+        "profissional_id": { "type": "string" },
+        "valor": { "type": "number" },
+        "forma_pagamento": { "type": "string" },
+        "parcelas": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pendente", "Pago", "Cancelado"] },
+        "data_pagamento": { "type": "string", "format": "date" },
+        "descricao": { "type": "string" },
+        "data_vencimento": { "type": "string", "format": "date" }
+      },
+      "required": ["paciente_id", "valor", "status"]
+    },
+    "Orcamento": {
+      "title": "Orçamento",
+      "description": "Orçamento de tratamento",
+      "type": "object",
+      "properties": {
+        "pacienteId": { "type": "string" },
+        "data": { "type": "string", "format": "date" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pendente", "Aprovado", "Cancelado"] },
+        "formaPagamento": { "type": "string" },
+        "observacoes": { "type": "string" },
+        "itens": { "type": "array", "items": { "type": "object" } }
+      },
+      "required": ["pacienteId", "data", "total", "status"]
+    },
+    "Procedimento": {
+      "title": "Procedimento",
+      "description": "Catálogo de procedimentos",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "valor": { "type": "number" },
+        "categoria": { "type": "string" }
+      },
+      "required": ["nome", "valor"]
+    },
+    "Profissional": {
+      "title": "Profissional",
+      "description": "Equipe da clínica",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "especialidade": { "type": "string" },
+        "cargo": { "type": "string" }
+      },
+      "required": ["nome"]
+    }
+  },
+  "firestore": {
+    "/pacientes": { "schema": "Paciente", "description": "Lista de pacientes" },
+    "/anamneses": { "schema": "Anamnese", "description": "Históricos de anamnese" },
+    "/procedimentos_realizados": { "schema": "ProcedimentoRealizado", "description": "Procedimentos executados" },
+    "/financeiro": { "schema": "Financeiro", "description": "Lançamentos financeiros" },
+    "/orcamentos": { "schema": "Orcamento", "description": "Orçamentos de pacientes" },
+    "/procedimentos": { "schema": "Procedimento", "description": "Catálogo de serviços" },
+    "/profissionais": { "schema": "Profissional", "description": "Lista de profissionais" }
+  }
+}

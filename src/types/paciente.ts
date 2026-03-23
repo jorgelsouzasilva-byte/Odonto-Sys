@@ -1,6 +1,6 @@
 
 export interface Paciente {
-  id: number;
+  id: string;
   nome: string;
   telefone: string;
   email: string;
@@ -17,9 +17,9 @@ export interface Paciente {
 }
 
 export interface Anamnese {
-  id: number;
-  pacienteId: number;
-  profissionalId: number;
+  id: string;
+  pacienteId: string;
+  profissionalId: string;
   profissional: string;
   data: string;
   queixa_principal: string;
@@ -49,7 +49,7 @@ export interface OrcamentoItem {
   id: string;
   dente: string;
   superficies: string[];
-  procedimentoId: number;
+  procedimentoId: string;
   procedimentoNome: string;
   valor: number;
   formaPagamento?: string;
@@ -57,8 +57,8 @@ export interface OrcamentoItem {
 }
 
 export interface Orcamento {
-  id: number;
-  pacienteId: number;
+  id: string;
+  pacienteId: string;
   data: string;
   itens: OrcamentoItem[];
   subtotal: number;
@@ -70,8 +70,9 @@ export interface Orcamento {
 }
 
 export interface Financeiro {
-  id: number;
-  pacienteId: number;
+  id: string;
+  pacienteId: string;
+  profissionalId?: string;
   data: string;
   descricao: string;
   valor: number;
@@ -80,14 +81,10 @@ export interface Financeiro {
 }
 
 export interface EvolucaoItem {
-  procedimentoId: number;
-  procedimentoNome?: string;
-  profissionalId: number;
-  profissionalNome?: string;
-  dentes: {
-    dente: number;
-    faces: string[];
-  }[];
+  id?: string;
+  procedimentoId: string | number;
+  profissionalId: string | number;
+  dentes: { dente: number; faces: string[] }[];
   valorBase: number;
   desconto: number;
   valorFinal: number;
@@ -95,21 +92,29 @@ export interface EvolucaoItem {
 }
 
 export interface Evolucao {
-  id: number;
-  pacienteId: number;
+  id: string;
+  pacienteId: string | number;
+  profissionalId?: string | number;
+  profissional?: string;
   data: string;
-  observacoesGerais: string;
+  queixa?: string;
+  exame_clinico?: string;
+  diagnostico?: string;
+  plano_tratamento?: string;
   itens: EvolucaoItem[];
-  totais: {
+  observacoes?: string;
+  observacoesGerais?: string;
+  totais?: {
     subtotal: number;
     descontoGeral: number;
     valorFinal: number;
   };
-  pagamento: {
+  pagamento?: {
     formaPagamento: string;
     parcelas: number;
     dataPagamento: string;
     status: string;
-    observacoes?: string;
+    observacoes: string;
   };
+  texto?: string;
 }

@@ -14,7 +14,7 @@ interface ExitModalProps {
 export default function ExitModal({ item, items, onClose, onSave }: ExitModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<StockExit>({
-    item_id: item?.id || 0,
+    item_id: item?.id || "",
     quantidade: 1,
     motivo: "Uso em Procedimento" as ExitReason
   })
@@ -33,7 +33,7 @@ export default function ExitModal({ item, items, onClose, onSave }: ExitModalPro
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (formData.item_id === 0) return alert("Selecione um material")
+    if (!formData.item_id) return alert("Selecione um material")
     
     const selected = items.find(i => i.id === formData.item_id)
     if (selected && formData.quantidade > selected.quantidade) {
@@ -73,10 +73,10 @@ export default function ExitModal({ item, items, onClose, onSave }: ExitModalPro
               <select
                 required
                 value={formData.item_id}
-                onChange={(e) => setFormData({ ...formData, item_id: parseInt(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, item_id: e.target.value })}
                 className="block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
               >
-                <option value="0">Selecione um material...</option>
+                <option value="">Selecione um material...</option>
                 {items.map(i => (
                   <option key={i.id} value={i.id}>
                     {i.nome} (Disp: {i.quantidade} {i.unidade})

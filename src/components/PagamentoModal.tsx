@@ -7,10 +7,11 @@ interface PagamentoModalProps {
   isOpen: boolean;
   onClose: () => void;
   lancamento: Financeiro | null;
+  pacienteNome: string;
   onConfirm: (formaPagamento: string) => void;
 }
 
-export default function PagamentoModal({ isOpen, onClose, lancamento, onConfirm }: PagamentoModalProps) {
+export default function PagamentoModal({ isOpen, onClose, lancamento, pacienteNome, onConfirm }: PagamentoModalProps) {
   const [formaPagamento, setFormaPagamento] = useState('PIX');
 
   if (!isOpen || !lancamento) return null;
@@ -19,7 +20,10 @@ export default function PagamentoModal({ isOpen, onClose, lancamento, onConfirm 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <div className="w-full max-w-[480px] rounded-xl bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Registrar Pagamento</h2>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Registrar Pagamento</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Paciente: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{pacienteNome}</span></p>
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-500">
             <X className="h-6 w-6" />
           </button>

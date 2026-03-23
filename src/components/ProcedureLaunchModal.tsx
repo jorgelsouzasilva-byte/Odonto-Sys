@@ -9,11 +9,12 @@ import { pacienteService } from '@/services/pacienteService';
 interface ProcedureLaunchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  pacienteId: number;
+  pacienteId: string;
+  pacienteNome: string;
   onSave: () => void;
 }
 
-export default function ProcedureLaunchModal({ isOpen, onClose, pacienteId, onSave }: ProcedureLaunchModalProps) {
+export default function ProcedureLaunchModal({ isOpen, onClose, pacienteId, pacienteNome, onSave }: ProcedureLaunchModalProps) {
   const [itens, setItens] = useState<any[]>([]);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
@@ -49,6 +50,7 @@ export default function ProcedureLaunchModal({ isOpen, onClose, pacienteId, onSa
         paciente_id: pacienteId,
         data_procedimento: new Date().toISOString().split('T')[0],
         itens: itens.map(({ id, procedimentoNome, profissionalNome, ...rest }) => rest),
+        itens_com_nome: itens,
         subtotal,
         desconto_geral: descontoGeral,
         valor_final: valorFinal,
@@ -88,7 +90,7 @@ export default function ProcedureLaunchModal({ isOpen, onClose, pacienteId, onSa
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Lançamento de Procedimento</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Registre procedimentos realizados e gere o financeiro</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Paciente: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{pacienteNome}</span></p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-500">

@@ -102,7 +102,7 @@ export default function OrcamentoVisualizarModal({ isOpen, onClose, orcamento, p
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <div className="w-full max-w-[900px] max-h-[90vh] overflow-hidden rounded-xl bg-white dark:bg-slate-900 shadow-xl flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Orçamento - {orcamento.data}</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Orçamento - {pacienteNome} - {orcamento.data}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-500">
             <X className="h-6 w-6" />
           </button>

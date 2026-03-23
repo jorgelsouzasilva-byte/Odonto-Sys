@@ -65,7 +65,7 @@ export default function Procedures() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Deseja realmente excluir este procedimento?")) return
     setLoading(true)
     try {
@@ -98,12 +98,12 @@ export default function Procedures() {
       await Promise.all([
         procedimentoService.integracaoFinanceiro({
           procedimento_id: proc.id,
-          paciente_id: 200, // Mock patient
+          paciente_id: "mock-patient-id", // Mock patient
           valor: proc.valor,
           forma_pagamento: "Cartão"
         }),
         procedimentoService.integracaoAgenda(proc.id),
-        procedimentoService.integracaoOrcamento(proc.id, 1001), // Mock budget
+        procedimentoService.integracaoOrcamento(proc.id, "mock-budget-id"), // Mock budget
         estoqueService.integracaoProcedimentoConsumo(proc.id, [
           { item_id: 1, quantidade: 1 } // Mock consumption of Resina
         ])

@@ -8,11 +8,12 @@ import { cn } from "@/lib/utils";
 interface NovoAtendimentoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  pacienteId: number;
+  pacienteId: string;
+  pacienteNome: string;
   onSave: () => void;
 }
 
-export default function NovoAtendimentoModal({ isOpen, onClose, pacienteId, onSave }: NovoAtendimentoModalProps) {
+export default function NovoAtendimentoModal({ isOpen, onClose, pacienteId, pacienteNome, onSave }: NovoAtendimentoModalProps) {
   const [loading, setLoading] = useState(false);
   const [observacoesGerais, setObservacoesGerais] = useState("");
   const [itens, setItens] = useState<EvolucaoItem[]>([]);
@@ -99,7 +100,7 @@ export default function NovoAtendimentoModal({ isOpen, onClose, pacienteId, onSa
         }
       };
 
-      await pacienteService.salvarEvolucao(evolucaoData);
+      await pacienteService.salvarEvolucao(pacienteId, evolucaoData);
       onSave();
       onClose();
       // Reset state
@@ -119,7 +120,10 @@ export default function NovoAtendimentoModal({ isOpen, onClose, pacienteId, onSa
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 overflow-y-auto">
       <div className="w-full max-w-4xl rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl my-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Novo Atendimento / Evolução</h2>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Novo Atendimento / Evolução</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Paciente: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{pacienteNome}</span></p>
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-500">
             <X className="h-6 w-6" />
           </button>

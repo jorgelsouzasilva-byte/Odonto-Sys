@@ -1,13 +1,14 @@
 
-import { useState, FormEvent } from "react"
+import { useState, FormEvent, useEffect } from "react"
 import { X } from "lucide-react"
 import { Anamnese } from "@/types/paciente"
 import { pacienteService } from "@/services/pacienteService"
+import { equipeService } from "@/services/equipeService"
 
 interface AnamneseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  pacienteId: number;
+  pacienteId: string;
   pacienteNome: string;
   onSave: () => void;
 }
@@ -37,6 +38,26 @@ export default function AnamneseModal({ isOpen, onClose, pacienteId, pacienteNom
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [profissionais, setProfissionais] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadProfissionais = async () => {
+      try {
+        const response = await equipeService.getDentistas();
+        setProfissionais(response.data);
+        if (response.data.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            profissionalId: response.data[0].id,
+            profissional: response.data[0].nome
+          }));
+        }
+      } catch (error) {
+        console.error("Erro ao carregar profissionais:", error);
+      }
+    };
+    loadProfissionais();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -101,7 +122,22 @@ export default function AnamneseModal({ isOpen, onClose, pacienteId, pacienteNom
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Profissional</label>
-                <input type="text" value="Dr. Jorge Silva" readOnly className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sm:text-sm" />
+                <select 
+                  value={formData.profissionalId}
+                  onChange={e => {
+                    const prof = profissionais.find(p => p.id === e.target.value);
+                    setFormData({
+                      ...formData, 
+                      profissionalId: e.target.value,
+                      profissional: prof?.nome || ""
+                    });
+                  }}
+                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  {profissionais.map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </section>

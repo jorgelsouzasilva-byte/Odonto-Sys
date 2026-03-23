@@ -15,7 +15,7 @@ interface OrcamentoItemModalProps {
 
 export default function OrcamentoItemModal({ isOpen, onClose, onAdd, toothNumber }: OrcamentoItemModalProps) {
   const [procedimentos, setProcedimentos] = useState<Procedimento[]>([]);
-  const [selectedProcedimentoId, setSelectedProcedimentoId] = useState<number | ''>('');
+  const [selectedProcedimentoId, setSelectedProcedimentoId] = useState<string | ''>('');
   const [selectedSurfaces, setSelectedSurfaces] = useState<string[]>([]);
   const [observacoes, setObservacoes] = useState('');
   const [valor, setValor] = useState(0);
@@ -31,7 +31,7 @@ export default function OrcamentoItemModal({ isOpen, onClose, onAdd, toothNumber
     setProcedimentos(response.data);
   };
 
-  const handleProcedimentoChange = (id: number) => {
+  const handleProcedimentoChange = (id: string) => {
     setSelectedProcedimentoId(id);
     const proc = procedimentos.find(p => p.id === id);
     if (proc) {
@@ -137,7 +137,7 @@ export default function OrcamentoItemModal({ isOpen, onClose, onAdd, toothNumber
             <select
               required
               value={selectedProcedimentoId}
-              onChange={(e) => handleProcedimentoChange(Number(e.target.value))}
+              onChange={(e) => handleProcedimentoChange(e.target.value)}
               className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             >
               <option value="">Selecione um procedimento</option>

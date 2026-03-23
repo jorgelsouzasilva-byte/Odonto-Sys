@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Shield, Key, Users, Save } from "lucide-react"
+import { Shield, Key, Users, Save, Settings as SettingsIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const roles = [
@@ -196,7 +196,7 @@ export default function Settings() {
           {activeTab !== 'permissions' && (
             <div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
               <div>
-                <Settings className="mx-auto h-12 w-12 text-slate-400" />
+                <SettingsIcon className="mx-auto h-12 w-12 text-slate-400" />
                 <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Conteúdo em desenvolvimento</h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Esta seção de configurações estará disponível em breve.</p>
               </div>

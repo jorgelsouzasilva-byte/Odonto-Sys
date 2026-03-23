@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: pacientes
+    // Fields: nome, telefone, email, status, cpf, data_nascimento, genero, endereco
+    //
+    // Collection: anamneses
+    // Fields: pacienteId, profissionalId, profissional, data, queixa_principal, ...
+    //
+    // Collection: procedimentos_realizados
+    // Fields: paciente_id, procedimento_id, profissional_id, data_procedimento, valor_final, ...
+    //
+    // Collection: financeiro
+    // Fields: paciente_id, profissional_id, valor, forma_pagamento, status, ...
+    //
+    // Collection: orcamentos
+    // Fields: pacienteId, data, total, status, ...
+    //
+    // Collection: procedimentos
+    // Fields: nome, valor, categoria
+    //
+    // Collection: profissionais
+    // Fields: nome, especialidade, cargo
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "jorgelsouzasilva@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Validation Functions
+    function isValidPaciente(data) {
+      return data.nome is string && data.nome.size() > 0 && data.nome.size() < 100 &&
+             data.status in ['Ativo', 'Inativo'];
+    }
+
+    function isValidFinanceiro(data) {
+      return data.valor is number && data.valor >= 0 &&
+             data.status in ['Pendente', 'Pago', 'Cancelado'];
+    }
+
+    // Rules
+    match /pacientes/{id} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidPaciente(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /anamneses/{id} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /procedimentos_realizados/{id} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /financeiro/{id} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidFinanceiro(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /orcamentos/{id} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /procedimentos/{id} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /profissionais/{id} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isAdmin();
+    }
+  }
+}

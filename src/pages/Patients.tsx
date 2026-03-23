@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
-import { Search, Plus, Filter, MoreVertical, FileText, Phone, Mail, Calendar, Stethoscope, Users, X, Activity, ClipboardList, Trash2, Calculator } from "lucide-react"
+import { Search, Plus, Filter, MoreVertical, FileText, Phone, Mail, Calendar, Stethoscope, Users, X, Activity, ClipboardList, Trash2, Calculator, Download, Edit } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { pacienteService } from "@/services/pacienteService"
 import AnamneseModal from "@/components/AnamneseModal"
@@ -13,24 +13,44 @@ import { financeiroService } from "@/services/financeiroService"
 import { Anamnese, Orcamento, OrcamentoItem, Financeiro } from "@/types/paciente"
 import { CheckCircle2, DollarSign } from "lucide-react"
 import PagamentoModal from "@/components/PagamentoModal"
-
-const initialPatients = [
-  { id: 1, nome: 'Maria Silva', telefone: '(11) 98765-4321', email: 'maria.silva@email.com', lastVisit: '10/03/2026', status: 'Ativo' },
-  { id: 2, nome: 'João Santos', telefone: '(11) 91234-5678', email: 'joao.santos@email.com', lastVisit: '15/03/2026', status: 'Ativo' },
-  { id: 3, nome: 'Pedro Costa', telefone: '(11) 99876-5432', email: 'pedro.costa@email.com', lastVisit: '01/02/2026', status: 'Inativo' },
-  { id: 4, nome: 'Ana Oliveira', telefone: '(11) 94567-8901', email: 'ana.oliveira@email.com', lastVisit: '16/03/2026', status: 'Ativo' },
-  { id: 5, nome: 'Carlos Souza', telefone: '(11) 93456-7890', email: 'carlos.souza@email.com', lastVisit: '20/12/2025', status: 'Inativo' },
-]
+import NovoAtendimentoModal from "@/components/NovoAtendimentoModal"
 
 export default function Patients() {
   const [searchParams] = useSearchParams()
-  const [patients, setPatients] = useState(initialPatients)
-  const [selectedPatient, setSelectedPatient] = useState<number | null>(null)
+  const [patients, setPatients] = useState<any[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedPatient, setSelectedPatient] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    loadPatients()
+  }, [])
+
+  const loadPatients = async () => {
+    setIsLoading(true)
+    try {
+      const response = await pacienteService.getPacientes()
+      setPatients(response.data)
+    } catch (error) {
+      console.error("Erro ao carregar pacientes:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filteredPatients = patients.filter(p => 
+    p.status !== 'Excluído' && (
+      p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.telefone.includes(searchTerm) ||
+      p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.cpf && p.cpf.includes(searchTerm))
+    )
+  )
 
   useEffect(() => {
     const id = searchParams.get('id')
     if (id) {
-      setSelectedPatient(Number(id))
+      setSelectedPatient(id)
     }
   }, [searchParams])
   const [activeTab, setActiveTab] = useState('dados')
@@ -50,36 +70,49 @@ export default function Patients() {
   const [isProcedureLaunchModalOpen, setIsProcedureLaunchModalOpen] = useState(false)
   const [historico, setHistorico] = useState<any[]>([])
 
+  const [evolucoes, setEvolucoes] = useState<any[]>([])
+  const [isEvolucaoModalOpen, setIsEvolucaoModalOpen] = useState(false)
+
+  const loadEvolucoes = async (id: string) => {
+    try {
+      const data = await pacienteService.getEvolucoes(id)
+      setEvolucoes(data)
+    } catch (error) {
+      console.error('Erro ao carregar evoluções:', error)
+    }
+  }
+
   useEffect(() => {
     if (selectedPatient) {
       loadAnamneses(selectedPatient)
       loadOrcamentos(selectedPatient)
       loadFinanceiro(selectedPatient)
       loadHistorico(selectedPatient)
+      loadEvolucoes(selectedPatient)
     }
   }, [selectedPatient])
 
-  const loadAnamneses = async (id: number) => {
+  const loadAnamneses = async (id: string) => {
     const response = await pacienteService.getAnamneses(id)
     setAnamneses(response.data)
   }
 
-  const loadOrcamentos = async (id: number) => {
+  const loadOrcamentos = async (id: string) => {
     const data = await orcamentoService.getOrcamentos(id)
     setOrcamentosHistory(data)
   }
 
-  const loadFinanceiro = async (id: number) => {
+  const loadFinanceiro = async (id: string) => {
     const data = await financeiroService.getFinanceiro(id)
     setFinanceiroHistory(data)
   }
 
-  const loadHistorico = async (id: number) => {
+  const loadHistorico = async (id: string) => {
     const data = await pacienteService.getHistorico(id)
     setHistorico(data)
   }
 
-  const handleAprovarOrcamento = async (id: number) => {
+  const handleAprovarOrcamento = async (id: string) => {
     try {
       await orcamentoService.aprovarOrcamento(id)
       if (selectedPatient) {
@@ -93,7 +126,7 @@ export default function Patients() {
     }
   }
 
-  const handleCancelarOrcamento = async (id: number) => {
+  const handleCancelarOrcamento = async (id: string) => {
     if (!confirm('Deseja realmente cancelar este orçamento?')) return;
     try {
       await orcamentoService.cancelarOrcamento(id)
@@ -121,17 +154,74 @@ export default function Patients() {
   const tabs = [
     { id: 'dados', name: 'Dados Pessoais' },
     { id: 'anamnese', name: 'Anamnese' },
+    { id: 'evolucao', name: 'Evolução' },
     { id: 'documentos', name: 'Documentos' },
     { id: 'historico', name: 'Histórico' },
     { id: 'orcamentos', name: 'Orçamentos' },
     { id: 'financeiro', name: 'Financeiro' },
   ]
 
-  const handleSave = (e: FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault()
-    setIsFormOpen(false)
-    setEditingPatient(null)
-    // Simulação de save
+    const formData = new FormData(e.target as HTMLFormElement)
+    const patientData = {
+      nome: formData.get('nome') as string,
+      telefone: formData.get('telefone') as string,
+      email: formData.get('email') as string,
+      cpf: formData.get('cpf') as string,
+      dataNascimento: formData.get('dataNascimento') as string,
+      genero: formData.get('genero') as string,
+      endereco: {
+        logradouro: formData.get('logradouro') as string,
+        bairro: formData.get('bairro') as string,
+        cidade: formData.get('cidade') as string,
+        uf: formData.get('uf') as string,
+      },
+      status: 'Ativo'
+    }
+
+    try {
+      if (editingPatient) {
+        await pacienteService.updatePaciente(editingPatient.id, patientData)
+      } else {
+        await pacienteService.createPaciente(patientData)
+      }
+      loadPatients()
+      setIsFormOpen(false)
+      setEditingPatient(null)
+    } catch (error) {
+      console.error("Erro ao salvar paciente:", error)
+      alert("Erro ao salvar paciente.")
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Deseja realmente inativar este paciente?")) return
+    try {
+      await pacienteService.deletePaciente(id)
+      loadPatients()
+      // If the selected patient was the one deleted, clear selection
+      if (selectedPatient === id) {
+        setSelectedPatient(null)
+      }
+    } catch (error) {
+      console.error("Erro ao excluir paciente:", error)
+      alert("Erro ao excluir paciente.")
+    }
+  }
+
+  const handleRealDelete = async (id: string) => {
+    if (!confirm("Deseja realmente EXCLUIR DEFINITIVAMENTE este paciente? Esta ação não pode ser desfeita.")) return
+    try {
+      await pacienteService.realDeletePaciente(id)
+      loadPatients()
+      if (selectedPatient === id) {
+        setSelectedPatient(null)
+      }
+    } catch (error) {
+      console.error("Erro ao excluir paciente:", error)
+      alert("Erro ao excluir paciente.")
+    }
   }
 
   const openNewForm = () => {
@@ -167,6 +257,8 @@ export default function Patients() {
               </div>
               <input
                 type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-slate-900 dark:text-white ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 bg-white dark:bg-slate-900"
                 placeholder="Buscar pacientes..."
               />
@@ -178,7 +270,7 @@ export default function Patients() {
 
           <div className="overflow-hidden rounded-xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800">
             <ul role="list" className="divide-y divide-slate-200 dark:divide-slate-800">
-              {patients.map((patient) => (
+              {filteredPatients.map((patient) => (
                 <li 
                   key={patient.id} 
                   className={cn(
@@ -245,6 +337,20 @@ export default function Patients() {
                     </div>
                     <div className="flex space-x-3">
                       <button 
+                        onClick={() => handleRealDelete(selectedPatient)}
+                        title="Excluir Definitivamente"
+                        className="inline-flex items-center justify-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-400 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(selectedPatient)}
+                        title="Inativar"
+                        className="inline-flex items-center justify-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                      <button 
                         onClick={openEditForm}
                         className="inline-flex items-center justify-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
                       >
@@ -303,15 +409,15 @@ export default function Patients() {
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">CPF</dt>
-                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">123.456.789-00</dd>
+                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">{patients.find(p => p.id === selectedPatient)?.cpf || '-'}</dd>
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Data de Nascimento</dt>
-                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">15/05/1985 (40 anos)</dd>
+                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">{patients.find(p => p.id === selectedPatient)?.dataNascimento || '-'}</dd>
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Gênero</dt>
-                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">Feminino</dd>
+                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">{patients.find(p => p.id === selectedPatient)?.genero || '-'}</dd>
                         </div>
                       </div>
                     </div>
@@ -320,15 +426,17 @@ export default function Patients() {
                       <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                         <div className="sm:col-span-2">
                           <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Logradouro</dt>
-                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">Rua das Flores, 123 - Apto 45</dd>
+                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">{patients.find(p => p.id === selectedPatient)?.endereco?.logradouro || '-'}</dd>
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Bairro</dt>
-                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">Centro</dd>
+                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">{patients.find(p => p.id === selectedPatient)?.endereco?.bairro || '-'}</dd>
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Cidade/UF</dt>
-                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">São Paulo / SP</dd>
+                          <dd className="mt-1 text-sm text-slate-900 dark:text-white">
+                            {patients.find(p => p.id === selectedPatient)?.endereco?.cidade} / {patients.find(p => p.id === selectedPatient)?.endereco?.uf}
+                          </dd>
                         </div>
                       </div>
                     </div>
@@ -579,7 +687,73 @@ export default function Patients() {
                   </div>
                 )}
                 {/* Outras abas seriam implementadas aqui */}
-                {!['dados', 'anamnese', 'historico', 'orcamentos', 'financeiro'].includes(activeTab) && (
+                {activeTab === 'evolucao' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-semibold leading-6 text-slate-900 dark:text-white">Evolução Clínica</h3>
+                      <button 
+                        onClick={() => setIsEvolucaoModalOpen(true)}
+                        className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+                      >
+                        Nova Evolução
+                      </button>
+                    </div>
+                    
+                    {evolucoes.length > 0 ? (
+                      <div className="space-y-4">
+                        {evolucoes.map((evolucao) => (
+                          <div key={evolucao.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{evolucao.data}</span>
+                              <span className="text-xs text-slate-400">Dr. Jorge Silva</span>
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{evolucao.texto}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
+                        <ClipboardList className="mx-auto h-12 w-12 text-slate-400" />
+                        <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Nenhuma evolução registrada</h3>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Registre o acompanhamento clínico do paciente.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeTab === 'documentos' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-semibold leading-6 text-slate-900 dark:text-white">Documentos e Exames</h3>
+                      <button className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Documento
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Mock documents */}
+                      {[
+                        { id: 1, name: 'Raio-X Panorâmico', date: '2024-03-10', type: 'Imagem', size: '2.4 MB' },
+                        { id: 2, name: 'Contrato de Prestação de Serviços', date: '2024-03-05', type: 'PDF', size: '1.1 MB' },
+                        { id: 3, name: 'Receita Médica - Amoxicilina', date: '2024-03-12', type: 'PDF', size: '450 KB' },
+                      ].map((doc) => (
+                        <div key={doc.id} className="group relative flex items-center gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all bg-white dark:bg-slate-900">
+                          <div className="h-12 w-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
+                            <FileText className="h-6 w-6" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">{doc.date} • {doc.size}</p>
+                          </div>
+                          <button className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                            <Download className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!['dados', 'anamnese', 'evolucao', 'documentos', 'historico', 'orcamentos', 'financeiro'].includes(activeTab) && (
                   <div className="text-center py-12">
                     <FileText className="mx-auto h-12 w-12 text-slate-400" />
                     <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Conteúdo em desenvolvimento</h3>
@@ -620,19 +794,54 @@ export default function Patients() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nome Completo</label>
-                  <input type="text" defaultValue={editingPatient?.nome} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
+                  <input type="text" name="nome" defaultValue={editingPatient?.nome} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">CPF</label>
-                  <input type="text" className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  <input type="text" name="cpf" defaultValue={editingPatient?.cpf} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Data de Nascimento</label>
+                  <input type="date" name="dataNascimento" defaultValue={editingPatient?.dataNascimento} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Gênero</label>
+                  <select name="genero" defaultValue={editingPatient?.genero} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    <option value="">Selecione...</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Feminino">Feminino</option>
+                    <option value="Outro">Outro</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Telefone</label>
-                  <input type="text" defaultValue={editingPatient?.telefone} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
+                  <input type="text" name="telefone" defaultValue={editingPatient?.telefone} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-                  <input type="email" defaultValue={editingPatient?.email} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  <input type="email" name="email" defaultValue={editingPatient?.email} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
+                <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-4">Endereço</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Logradouro</label>
+                    <input type="text" name="logradouro" defaultValue={editingPatient?.endereco?.logradouro} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Bairro</label>
+                    <input type="text" name="bairro" defaultValue={editingPatient?.endereco?.bairro} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Cidade</label>
+                    <input type="text" name="cidade" defaultValue={editingPatient?.endereco?.cidade} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">UF</label>
+                    <input type="text" name="uf" defaultValue={editingPatient?.endereco?.uf} className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  </div>
                 </div>
               </div>
               
@@ -679,6 +888,7 @@ export default function Patients() {
             isOpen={isNovoOrcamentoModalOpen}
             onClose={() => setIsNovoOrcamentoModalOpen(false)}
             pacienteId={selectedPatient}
+            pacienteNome={patients.find(p => p.id === selectedPatient)?.nome || ""}
             onSave={() => loadOrcamentos(selectedPatient)}
           />
           <OrcamentoVisualizarModal 
@@ -697,19 +907,30 @@ export default function Patients() {
               setSelectedLancamento(null)
             }}
             lancamento={selectedLancamento}
+            pacienteNome={patients.find(p => p.id === selectedPatient)?.nome || ""}
             onConfirm={handleConfirmarPagamento}
           />
           <ProcedureLaunchModal 
             isOpen={isProcedureLaunchModalOpen}
             onClose={() => setIsProcedureLaunchModalOpen(false)}
             pacienteId={selectedPatient}
+            pacienteNome={patients.find(p => p.id === selectedPatient)?.nome || ""}
             onSave={() => {
               loadFinanceiro(selectedPatient)
               loadHistorico(selectedPatient)
             }}
+          />
+          <NovoAtendimentoModal 
+            isOpen={isEvolucaoModalOpen}
+            onClose={() => setIsEvolucaoModalOpen(false)}
+            pacienteId={selectedPatient}
+            pacienteNome={patients.find(p => p.id === selectedPatient)?.nome || ""}
+            onSave={() => loadEvolucoes(selectedPatient)}
           />
         </>
       )}
     </div>
   )
 }
+
+

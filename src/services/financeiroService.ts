@@ -1,123 +1,134 @@
 
 import { Financeiro } from "../types/paciente";
-
-const getStoredFinanceiro = (): Financeiro[] => {
-  const stored = localStorage.getItem('odonto_financeiro');
-  if (stored) return JSON.parse(stored);
-  return [];
-};
-
-const saveFinanceiro = (financeiro: Financeiro[]) => {
-  localStorage.setItem('odonto_financeiro', JSON.stringify(financeiro));
-};
-
-const initialTransactions: any[] = [
-  { id: 1001, data: '2026-03-15', descricao: 'Consulta Maria Silva', categoria: 'Ortodontia', metodo: 'Pix', status: 'Pago', tipo: 'receita', valor: 250.00, filial_id: 1 },
-  { id: 1002, data: '2026-03-16', descricao: 'Aluguel Sala', categoria: 'Infraestrutura', metodo: 'Boleto', status: 'Pago', tipo: 'despesa', valor: -2500.00, filial_id: 1 },
-  { id: 1003, data: '2026-03-17', descricao: 'Implante João Santos', categoria: 'Implantodontia', metodo: 'Cartão de Crédito', status: 'Pendente', tipo: 'receita', valor: 1500.00, filial_id: 1 },
-];
-
-const getStoredTransactions = (): any[] => {
-  const stored = localStorage.getItem('odonto_transactions');
-  if (stored) return JSON.parse(stored);
-  return initialTransactions;
-};
-
-const saveTransactions = (transactions: any[]) => {
-  localStorage.setItem('odonto_transactions', JSON.stringify(transactions));
-};
+import { Transaction, FinancialFilters } from "../types/financeiro";
+import { db } from "../firebase";
+import { 
+  collection, 
+  getDocs, 
+  getDoc, 
+  doc, 
+  addDoc, 
+  updateDoc,
+  query, 
+  where, 
+  orderBy,
+  deleteDoc
+} from "firebase/firestore";
 
 export const financeiroService = {
-  async getFinanceiro(pacienteId: number): Promise<Financeiro[]> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const financeiro = getStoredFinanceiro();
-    return financeiro.filter(f => f.pacienteId === pacienteId);
+  async getFinanceiro(pacienteId: string): Promise<Financeiro[]> {
+    const q = query(
+      collection(db, "financeiro"),
+      where("paciente_id", "==", pacienteId),
+      orderBy("data", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        pacienteId: data.paciente_id,
+        data: data.data,
+        descricao: data.descricao,
+        valor: data.valor,
+        formaPagamento: data.forma_pagamento,
+        status: data.status
+      } as Financeiro;
+    });
   },
 
   async createLancamento(data: Omit<Financeiro, 'id'>): Promise<Financeiro> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const financeiro = getStoredFinanceiro();
-    const newLancamento: Financeiro = {
+    const firestoreData = {
+      paciente_id: data.pacienteId,
+      data: data.data,
+      descricao: data.descricao,
+      valor: data.valor,
+      forma_pagamento: data.formaPagamento,
+      status: data.status,
+      tipo: data.valor >= 0 ? 'receita' : 'despesa'
+    };
+    const docRef = await addDoc(collection(db, "financeiro"), firestoreData);
+    return {
       ...data,
-      id: Math.max(0, ...financeiro.map(f => f.id)) + 1
-    };
-    saveFinanceiro([newLancamento, ...financeiro]);
+      id: docRef.id
+    } as Financeiro;
+  },
 
-    // Sync with general transactions
-    const transactions = getStoredTransactions();
-    transactions.unshift({
-      id: newLancamento.id,
-      data: newLancamento.data,
-      descricao: newLancamento.descricao,
-      categoria: 'Tratamento',
-      metodo: newLancamento.formaPagamento || '-',
-      status: newLancamento.status,
-      tipo: 'receita',
-      valor: newLancamento.valor,
-      filial_id: 1
+  async registrarPagamento(id: string, formaPagamento: string): Promise<Financeiro> {
+    const docRef = doc(db, "financeiro", id);
+    await updateDoc(docRef, { 
+      status: 'Pago',
+      forma_pagamento: formaPagamento,
+      data_pagamento: new Date().toISOString().split('T')[0]
     });
-    saveTransactions(transactions);
-
-    return newLancamento;
+    const docSnap = await getDoc(docRef);
+    const data = docSnap.data()!;
+    return {
+      id: docSnap.id,
+      pacienteId: data.paciente_id,
+      data: data.data,
+      descricao: data.descricao,
+      valor: data.valor,
+      formaPagamento: data.forma_pagamento,
+      status: data.status
+    } as Financeiro;
   },
 
-  async registrarPagamento(id: number, formaPagamento: string): Promise<Financeiro> {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const financeiro = getStoredFinanceiro();
-    const index = financeiro.findIndex(f => f.id === id);
-    if (index === -1) throw new Error("Lançamento não encontrado");
+  async getTransactions(filters: FinancialFilters) {
+    let q = query(collection(db, "financeiro"), orderBy("data", "desc"));
     
-    const updated = { 
-      ...financeiro[index], 
-      status: 'Pago' as const,
-      formaPagamento 
-    };
-    financeiro[index] = updated;
-    saveFinanceiro(financeiro);
-
-    // Sync with general transactions
-    const transactions = getStoredTransactions();
-    const gIndex = transactions.findIndex(t => t.id === id);
-    if (gIndex !== -1) {
-      transactions[gIndex].status = 'Pago';
-      transactions[gIndex].metodo = formaPagamento;
-      saveTransactions(transactions);
+    if (filters.filial_id) {
+      q = query(q, where("filial_id", "==", filters.filial_id));
     }
-
-    return updated;
-  },
-
-  // General dashboard methods (for Financial.tsx)
-  async getTransactions(filters: any) {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    let all = getStoredTransactions();
-    
     if (filters.type && filters.type !== 'all') {
-      all = all.filter((t: any) => t.tipo === filters.type);
+      q = query(q, where("tipo", "==", filters.type));
     }
     if (filters.status && filters.status !== 'all') {
-      all = all.filter((t: any) => t.status === filters.status);
+      q = query(q, where("status", "==", filters.status));
     }
+    if (filters.start_date) {
+      q = query(q, where("data", ">=", filters.start_date));
+    }
+    if (filters.end_date) {
+      q = query(q, where("data", "<=", filters.end_date));
+    }
+
+    const querySnapshot = await getDocs(q);
+    let all = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Transaction[];
+
     if (filters.search) {
       const search = filters.search.toLowerCase();
-      all = all.filter((t: any) => t.descricao.toLowerCase().includes(search));
+      all = all.filter((t: Transaction) => 
+        t.descricao.toLowerCase().includes(search) || 
+        t.categoria?.toLowerCase().includes(search)
+      );
     }
 
     return {
       data: all,
-      meta: { total: all.length }
+      meta: { 
+        total: all.length,
+        page: filters.page || 1,
+        per_page: filters.per_page || 20,
+        period: filters.period || 'month',
+        start_date: filters.start_date || '',
+        end_date: filters.end_date || ''
+      }
     };
   },
 
-  async getSummary(filters: any) {
+  async getSummary(filters: FinancialFilters) {
     const { data } = await this.getTransactions(filters);
-    const receitas = data.filter((t: any) => t.tipo === 'receita').reduce((acc: number, t: any) => acc + t.valor, 0);
-    const despesas = data.filter((t: any) => t.tipo === 'despesa').reduce((acc: number, t: any) => acc + Math.abs(t.valor), 0);
+    const receitas = data.filter((t: Transaction) => t.tipo === 'receita').reduce((acc: number, t: Transaction) => acc + t.valor, 0);
+    const despesas = data.filter((t: Transaction) => t.tipo === 'despesa').reduce((acc: number, t: Transaction) => acc + Math.abs(t.valor), 0);
     return {
       receitas,
       despesas,
       saldo: receitas - despesas,
-      a_receber_hoje: data.filter((t: any) => t.status === 'Pendente' && t.tipo === 'receita').reduce((acc: number, t: any) => acc + t.valor, 0)
+      a_receber_hoje: data.filter((t: Transaction) => t.status === 'Pendente' && t.tipo === 'receita').reduce((acc: number, t: Transaction) => acc + t.valor, 0)
     };
   },
 
@@ -137,28 +148,22 @@ export const financeiroService = {
     };
   },
 
-  async updateTransaction(id: number, data: any) {
-    const transactions = getStoredTransactions();
-    const index = transactions.findIndex(t => t.id === id);
-    if (index !== -1) {
-      transactions[index] = { ...transactions[index], ...data };
-      saveTransactions(transactions);
-      return transactions[index];
-    }
-    throw new Error('Transação não encontrada');
+  async updateTransaction(id: string, data: any) {
+    const docRef = doc(db, "financeiro", id);
+    await updateDoc(docRef, data);
+    const docSnap = await getDoc(docRef);
+    return { id: docSnap.id, ...docSnap.data() };
   },
 
   async createTransaction(data: any) {
-    const transactions = getStoredTransactions();
-    const newTrans = { ...data, id: Date.now() };
-    transactions.unshift(newTrans);
-    saveTransactions(transactions);
-    return newTrans;
+    const docRef = await addDoc(collection(db, "financeiro"), {
+      ...data,
+      tipo: data.valor >= 0 ? 'receita' : 'despesa'
+    });
+    return { id: docRef.id, ...data };
   },
 
-  async deleteTransaction(id: number) {
-    const transactions = getStoredTransactions();
-    const filtered = transactions.filter(t => t.id !== id);
-    saveTransactions(filtered);
+  async deleteTransaction(id: string) {
+    await deleteDoc(doc(db, "financeiro", id));
   }
 };

@@ -3,15 +3,15 @@ export type TransactionStatus = 'Pago' | 'Pendente';
 export type PeriodType = 'day' | 'month' | 'year' | 'custom';
 
 export interface Transaction {
-  id: number;
+  id: string;
   data: string;
   descricao: string;
-  categoria: string;
-  metodo: string;
+  categoria?: string;
+  metodo?: string;
   status: TransactionStatus;
   tipo: TransactionType;
   valor: number;
-  filial_id: number;
+  filial_id?: string | number;
 }
 
 export interface FinancialSummary {
@@ -27,7 +27,7 @@ export interface FinancialFilters {
   end_date?: string;
   type?: 'all' | TransactionType;
   status?: 'all' | TransactionStatus;
-  filial_id?: number;
+  filial_id?: string | number;
   categoria?: string;
   search?: string;
   page?: number;

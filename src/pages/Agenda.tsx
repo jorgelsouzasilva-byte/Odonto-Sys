@@ -31,11 +31,11 @@ import { AgendaDashboard } from '../components/AgendaDashboard';
 export default function Agenda() {
   const [mode, setMode] = useState<AgendaMode>('dia');
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [filialId, setFilialId] = useState<number | undefined>();
-  const [profissionalId, setProfissionalId] = useState<number | undefined>();
+  const [filialId, setFilialId] = useState<string | number | undefined>();
+  const [profissionalId, setProfissionalId] = useState<string | number | undefined>();
   
   const [items, setItems] = useState<AgendaItem[]>([]);
-  const [stats, setStats] = useState<AgendaDashboardStats>({ pendentes: 0, confirmadas: 0, total_dia: 0 });
+  const [stats, setStats] = useState<AgendaDashboardStats>({ pendentes: 0, confirmadas: 0, totalDia: 0 });
   const [marks, setMarks] = useState<CalendarMark[]>([]);
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [profissionais, setProfissionais] = useState<Funcionario[]>([]);
@@ -51,8 +51,8 @@ export default function Agenda() {
     profissional: '',
     hora: '09:00',
     data: format(new Date(), 'yyyy-MM-dd'),
-    filial_id: 1,
-    profissional_id: 1
+    filial_id: '',
+    profissional_id: ''
   });
 
   useEffect(() => {
@@ -99,7 +99,7 @@ export default function Agenda() {
     }
   };
 
-  const handleConfirm = async (id: number) => {
+  const handleConfirm = async (id: string) => {
     try {
       await agendaService.confirm(id);
       loadAgenda();
@@ -166,13 +166,13 @@ export default function Agenda() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="text-center min-w-[60px]">
-                      <p className="text-lg font-bold text-zinc-900">{item.hora}</p>
+                      <p className="text-lg font-bold text-zinc-900">{item.hora || item.startTime}</p>
                       <p className="text-[10px] font-medium text-zinc-400 uppercase">Horário</p>
                     </div>
                     <div className="h-10 w-[1px] bg-zinc-100" />
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-zinc-900">{item.paciente}</h4>
+                        <h4 className="font-semibold text-zinc-900">{item.paciente || item.patientName}</h4>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
                           item.status === 'confirmado' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                         }`}>
@@ -181,10 +181,10 @@ export default function Agenda() {
                       </div>
                       <div className="flex items-center gap-4 text-xs text-zinc-500">
                         <span className="flex items-center gap-1">
-                          <Stethoscope className="w-3 h-3" /> {item.procedimento}
+                          <Stethoscope className="w-3 h-3" /> {item.procedimento || item.procedureName}
                         </span>
                         <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" /> {item.profissional}
+                          <User className="w-3 h-3" /> {item.profissional || item.professionalName}
                         </span>
                       </div>
                     </div>
@@ -218,7 +218,7 @@ export default function Agenda() {
       return (
         <div className="grid grid-cols-7 gap-4">
           {days.map((day, i) => {
-            const dayItems = items.filter(item => item.data === format(day, 'yyyy-MM-dd'));
+            const dayItems = items.filter(item => (item.data || item.startTime?.split('T')[0]) === format(day, 'yyyy-MM-dd'));
             const isToday = isSameDay(day, new Date());
 
             return (
@@ -232,9 +232,9 @@ export default function Agenda() {
                     <div key={item.id} className={`p-2 rounded-xl border text-[10px] ${
                       item.status === 'confirmado' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'
                     }`}>
-                      <p className="font-bold">{item.hora}</p>
-                      <p className="truncate">{item.paciente}</p>
-                      <p className="opacity-70 truncate">{item.procedimento}</p>
+                      <p className="font-bold">{item.hora || item.startTime}</p>
+                      <p className="truncate">{item.paciente || item.patientName}</p>
+                      <p className="opacity-70 truncate">{item.procedimento || item.procedureName}</p>
                     </div>
                   ))}
                   {dayItems.length === 0 && (
@@ -301,7 +301,7 @@ export default function Agenda() {
                 <label className="text-[10px] font-bold text-zinc-400 uppercase mb-1 block">Filial</label>
                 <select 
                   value={filialId || ''} 
-                  onChange={(e) => setFilialId(e.target.value ? Number(e.target.value) : undefined)}
+                  onChange={(e) => setFilialId(e.target.value || undefined)}
                   className="w-full bg-zinc-50 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-zinc-900"
                 >
                   <option value="">Todas as Filiais</option>
@@ -315,7 +315,7 @@ export default function Agenda() {
                 <label className="text-[10px] font-bold text-zinc-400 uppercase mb-1 block">Profissional</label>
                 <select 
                   value={profissionalId || ''} 
-                  onChange={(e) => setProfissionalId(e.target.value ? Number(e.target.value) : undefined)}
+                  onChange={(e) => setProfissionalId(e.target.value || undefined)}
                   className="w-full bg-zinc-50 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-zinc-900"
                 >
                   <option value="">Todos os Profissionais</option>
@@ -478,10 +478,10 @@ export default function Agenda() {
                       required
                       value={formData.profissional_id}
                       onChange={(e) => {
-                        const p = profissionais.find(prof => prof.id === Number(e.target.value));
+                        const p = profissionais.find(prof => prof.id === e.target.value);
                         setFormData({ 
                           ...formData, 
-                          profissional_id: Number(e.target.value),
+                          profissional_id: e.target.value,
                           profissional: p?.nome || ''
                         });
                       }}
@@ -498,7 +498,7 @@ export default function Agenda() {
                     <select 
                       required
                       value={formData.filial_id}
-                      onChange={(e) => setFormData({ ...formData, filial_id: Number(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, filial_id: e.target.value })}
                       className="w-full bg-zinc-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-zinc-900"
                     >
                       {filiais.map(f => (

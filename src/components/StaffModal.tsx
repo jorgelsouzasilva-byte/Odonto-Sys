@@ -6,7 +6,7 @@ interface StaffModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
-  staffId?: number | null
+  staffId?: string | null
 }
 
 export default function StaffModal({ isOpen, onClose, onSuccess, staffId }: StaffModalProps) {

@@ -1,9 +1,9 @@
 export interface Patrimonio {
-  id: number;
+  id: string;
   nome: string;
   numero_serie: string;
   filial: string;
-  filial_id: number;
+  filial_id: string;
   data_aquisicao: string;
   status: string;
   valor: number;
@@ -25,7 +25,7 @@ export interface Movimentacao {
 export interface CreatePatrimonioDTO {
   nome: string;
   numero_serie: string;
-  filial_id: number;
+  filial_id: string;
   data_aquisicao: string;
   valor: number;
   estado: string;
@@ -33,7 +33,8 @@ export interface CreatePatrimonioDTO {
 }
 
 export interface TransferPatrimonioDTO {
-  destino_filial_id: number;
+  destino_filial_id: string;
   data_transferencia: string;
   motivo: string;
+  observacoes?: string;
 }

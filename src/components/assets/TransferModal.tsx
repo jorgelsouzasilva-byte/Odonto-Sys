@@ -12,7 +12,7 @@ interface TransferModalProps {
 
 export default function TransferModal({ isOpen, onClose, onSuccess, asset }: TransferModalProps) {
   const [formData, setFormData] = useState<TransferPatrimonioDTO>({
-    destino_filial_id: 1,
+    destino_filial_id: "1",
     data_transferencia: new Date().toISOString().split('T')[0],
     motivo: ""
   })
@@ -22,7 +22,7 @@ export default function TransferModal({ isOpen, onClose, onSuccess, asset }: Tra
     if (asset) {
       // Default destination to the other branch
       setFormData({
-        destino_filial_id: asset.filial_id === 1 ? 2 : 1,
+        destino_filial_id: asset.filial_id === "1" ? "2" : "1",
         data_transferencia: new Date().toISOString().split('T')[0],
         motivo: ""
       })
@@ -69,11 +69,11 @@ export default function TransferModal({ isOpen, onClose, onSuccess, asset }: Tra
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Filial de Destino</label>
             <select
               value={formData.destino_filial_id}
-              onChange={(e) => setFormData({ ...formData, destino_filial_id: Number(e.target.value) })}
+              onChange={(e) => setFormData({ ...formData, destino_filial_id: e.target.value })}
               className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             >
-              <option value={1} disabled={asset.filial_id === 1}>Matriz</option>
-              <option value={2} disabled={asset.filial_id === 2}>Filial Centro</option>
+              <option value="1" disabled={asset.filial_id === "1"}>Matriz</option>
+              <option value="2" disabled={asset.filial_id === "2"}>Filial Centro</option>
             </select>
           </div>
 

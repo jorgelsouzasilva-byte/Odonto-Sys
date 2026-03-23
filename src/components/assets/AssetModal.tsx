@@ -14,7 +14,7 @@ export default function AssetModal({ isOpen, onClose, onSuccess, asset }: AssetM
   const [formData, setFormData] = useState<CreatePatrimonioDTO>({
     nome: "",
     numero_serie: "",
-    filial_id: 1,
+    filial_id: "1",
     data_aquisicao: new Date().toISOString().split('T')[0],
     valor: 0,
     estado: "Em uso",
@@ -38,7 +38,7 @@ export default function AssetModal({ isOpen, onClose, onSuccess, asset }: AssetM
       setFormData({
         nome: "",
         numero_serie: "",
-        filial_id: 1,
+        filial_id: "1",
         data_aquisicao: new Date().toISOString().split('T')[0],
         valor: 0,
         estado: "Em uso",
@@ -126,11 +126,11 @@ export default function AssetModal({ isOpen, onClose, onSuccess, asset }: AssetM
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Filial</label>
               <select
                 value={formData.filial_id}
-                onChange={(e) => setFormData({ ...formData, filial_id: Number(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, filial_id: e.target.value })}
                 className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               >
-                <option value={1}>Matriz</option>
-                <option value={2}>Filial Centro</option>
+                <option value="1">Matriz</option>
+                <option value="2">Filial Centro</option>
               </select>
             </div>
 

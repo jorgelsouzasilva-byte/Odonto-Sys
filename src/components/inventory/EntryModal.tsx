@@ -14,7 +14,7 @@ interface EntryModalProps {
 export default function EntryModal({ item, items, onClose, onSave }: EntryModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<StockEntry>({
-    item_id: item?.id || 0,
+    item_id: item?.id || "",
     quantidade: 1,
     lote: "",
     validade: "",
@@ -49,7 +49,7 @@ export default function EntryModal({ item, items, onClose, onSave }: EntryModalP
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (formData.item_id === 0) return alert("Selecione um material")
+    if (!formData.item_id) return alert("Selecione um material")
     
     setLoading(true)
     try {
@@ -84,10 +84,10 @@ export default function EntryModal({ item, items, onClose, onSave }: EntryModalP
               <select
                 required
                 value={formData.item_id}
-                onChange={(e) => setFormData({ ...formData, item_id: parseInt(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, item_id: e.target.value })}
                 className="block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
               >
-                <option value="0">Selecione um material...</option>
+                <option value="">Selecione um material...</option>
                 {items.map(i => (
                   <option key={i.id} value={i.id}>{i.nome}</option>
                 ))}

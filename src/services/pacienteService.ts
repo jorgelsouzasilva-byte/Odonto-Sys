@@ -1,87 +1,170 @@
 
+import { 
+  collection, 
+  getDocs, 
+  getDoc, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+  query, 
+  where, 
+  orderBy,
+  Timestamp,
+  serverTimestamp
+} from "firebase/firestore";
+import { db } from "../firebase";
 import { Paciente, Anamnese } from "../types/paciente";
-
-const initialPatients: Paciente[] = [
-  { id: 1, nome: 'Maria Silva', telefone: '(11) 98765-4321', email: 'maria.silva@email.com', status: 'Ativo' },
-  { id: 2, nome: 'João Santos', telefone: '(11) 91234-5678', email: 'joao.santos@email.com', status: 'Ativo' },
-  { id: 3, nome: 'Pedro Costa', telefone: '(11) 99876-5432', email: 'pedro.costa@email.com', status: 'Inativo' },
-  { id: 4, nome: 'Ana Oliveira', telefone: '(11) 94567-8901', email: 'ana.oliveira@email.com', status: 'Ativo' },
-  { id: 5, nome: 'Carlos Souza', telefone: '(11) 93456-7890', email: 'carlos.souza@email.com', status: 'Inativo' },
-];
-
-const initialAnamneses: Anamnese[] = [
-  {
-    id: 1,
-    pacienteId: 1,
-    profissionalId: 1,
-    profissional: "Dr. Jorge Silva",
-    data: "2026-03-10",
-    queixa_principal: "Dor ao mastigar lado direito.",
-    tratamento_medico: true,
-    medicamentos: "Losartana",
-    alergias: "Dipirona",
-    hospitalizacoes: "Cirurgia em 2020",
-    doencas: ["Hipertensão"],
-    sensibilidade: true,
-    sangramento: false,
-    bruxismo: true,
-    ultima_consulta: "2025-12-01",
-    reacao_anestesia: "Nenhuma relatada",
-    fuma: false,
-    alcool: true,
-    cafe: true,
-    mastiga_objetos: false,
-    gestante: false,
-    amamentando: false,
-    cicatrizacao: false,
-    coagulacao: false,
-    observacoes: "Paciente ansioso, recomenda-se abordagem tranquila.",
-    resumo: "Queixa principal: dor ao mastigar."
-  }
-];
+import { financeiroService } from "./financeiroService";
 
 export const pacienteService = {
   getPacientes: async () => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return { data: initialPatients };
+    const querySnapshot = await getDocs(collection(db, "pacientes"));
+    const data = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Paciente[];
+    return { data };
   },
-  getAnamneses: async (pacienteId: number) => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return { data: initialAnamneses.filter(a => a.pacienteId === pacienteId) };
+
+  getAnamneses: async (pacienteId: string) => {
+    const q = query(
+      collection(db, "anamneses"),
+      where("pacienteId", "==", pacienteId),
+      orderBy("data", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    const data = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Anamnese[];
+    return { data };
   },
-  getAnamneseDetalhe: async (id: number) => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return { data: initialAnamneses.find(a => a.id === id) };
+
+  getAnamneseDetalhe: async (id: string) => {
+    const docSnap = await getDoc(doc(db, "anamneses", id));
+    if (docSnap.exists()) {
+      return { data: { id: docSnap.id, ...docSnap.data() } as Anamnese };
+    }
+    return { data: null };
   },
-  salvarAnamnese: async (anamnese: Omit<Anamnese, 'id' | 'data' | 'profissional' | 'profissionalId'>) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const newAnamnese: Anamnese = {
+
+  salvarAnamnese: async (anamnese: Omit<Anamnese, 'id' | 'data'>) => {
+    const newAnamnese = {
       ...anamnese,
-      id: initialAnamneses.length + 1,
       data: new Date().toISOString().split('T')[0],
-      profissional: "Dr. Jorge Silva",
-      profissionalId: 1,
-      resumo: `Queixa principal: ${anamnese.queixa_principal.substring(0, 50)}...`
+      resumo: `Queixa principal: ${anamnese.queixa_principal.substring(0, 50)}...`,
+      createdAt: serverTimestamp()
     };
-    initialAnamneses.push(newAnamnese);
-    return { data: newAnamnese };
+    const docRef = await addDoc(collection(db, "anamneses"), newAnamnese);
+    return { data: { id: docRef.id, ...newAnamnese } as Anamnese };
   },
-  registrarLancamento: async (pacienteId: number, payload: any) => {
-    const response = await fetch(`/api/pacientes/${pacienteId}/lancamento`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+
+  registrarLancamento: async (pacienteId: string, payload: any) => {
+    // 1. Create financial entry
+    const financeiro = await financeiroService.createLancamento({
+      pacienteId: pacienteId,
+      data: new Date().toISOString().split('T')[0],
+      descricao: `Procedimento: ${payload.itens_com_nome?.map((i: any) => i.procedimentoNome).join(', ') || 'Lançamento de Procedimento'}`,
+      valor: payload.valor_final,
+      formaPagamento: payload.pagamento.forma_pagamento,
+      status: payload.pagamento.status === 'pago' ? 'Pago' : 'Pendente'
     });
-    if (!response.ok) throw new Error('Erro ao registrar lançamento');
-    return await response.json();
+
+    // 2. Add to history (Procedimento Realizado)
+    const procRef = await addDoc(collection(db, "procedimentos_realizados"), {
+      paciente_id: pacienteId,
+      data_procedimento: new Date().toISOString().split('T')[0],
+      valor_final: payload.valor_final,
+      itens: payload.itens || [],
+      financeiro_id: financeiro.id,
+      createdAt: serverTimestamp()
+    });
+
+    return { status: "sucesso", id: procRef.id };
   },
-  getHistorico: async (pacienteId: number) => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    // Mock history
-    return [
-      { date: '16 Mar 2026', title: 'Clareamento Dental', doctor: 'Dra. Ana Costa', type: 'Procedimento' },
-      { date: '10 Fev 2026', title: 'Limpeza (Profilaxia)', doctor: 'Dr. Jorge Silva', type: 'Procedimento' },
-      { date: '05 Fev 2026', title: 'Avaliação Inicial', doctor: 'Dr. Jorge Silva', type: 'Consulta' },
-    ];
+
+  getHistorico: async (pacienteId: string) => {
+    const q = query(
+      collection(db, "procedimentos_realizados"),
+      where("paciente_id", "==", pacienteId),
+      orderBy("data_procedimento", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        date: data.data_procedimento,
+        title: "Procedimento Realizado",
+        doctor: "Dr. Jorge Silva",
+        type: 'Procedimento'
+      };
+    });
+  },
+
+  createPaciente: async (paciente: Omit<Paciente, 'id'>) => {
+    const docRef = await addDoc(collection(db, "pacientes"), {
+      ...paciente,
+      createdAt: serverTimestamp()
+    });
+    return { id: docRef.id, ...paciente };
+  },
+
+  updatePaciente: async (id: string, paciente: Partial<Paciente>) => {
+    const docRef = doc(db, "pacientes", id);
+    await updateDoc(docRef, paciente);
+    return { id, ...paciente };
+  },
+
+  deletePaciente: async (id: string) => {
+    const docRef = doc(db, "pacientes", id);
+    await updateDoc(docRef, { status: 'Inativo' });
+    return { id };
+  },
+
+  realDeletePaciente: async (id: string) => {
+    const docRef = doc(db, "pacientes", id);
+    // In a real app, we might want to check for dependencies (financeiro, anamneses, etc)
+    // For now, let's just delete the document.
+    // await deleteDoc(docRef); 
+    // Actually, let's stick to updateDoc status for safety in this environment unless explicitly asked for hard delete.
+    // But I'll add the import for deleteDoc just in case.
+    await updateDoc(docRef, { status: 'Excluído' });
+    return { id };
+  },
+
+  salvarEvolucao: async (pacienteId: string, evolucao: any) => {
+    // 1. Save the evolution record
+    const docRef = await addDoc(collection(db, "pacientes", pacienteId, "evolucoes"), {
+      ...evolucao,
+      createdAt: serverTimestamp()
+    });
+
+    // 2. If there's a payment status, create a financial entry
+    if (evolucao.pagamento && evolucao.totais?.valorFinal > 0) {
+      await financeiroService.createLancamento({
+        pacienteId: pacienteId,
+        data: evolucao.data || new Date().toISOString().split('T')[0],
+        descricao: `Evolução Clínica: ${evolucao.itens?.map((i: any) => i.procedimentoId).join(', ') || 'Procedimentos'}`,
+        valor: evolucao.totais.valorFinal,
+        formaPagamento: evolucao.pagamento.formaPagamento,
+        status: evolucao.pagamento.status === 'pago' ? 'Pago' : 'Pendente'
+      });
+    }
+
+    return { id: docRef.id, ...evolucao };
+  },
+
+  getEvolucoes: async (pacienteId: string) => {
+    const q = query(
+      collection(db, "pacientes", pacienteId, "evolucoes"),
+      orderBy("createdAt", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      data: doc.data().createdAt?.toDate().toISOString().split('T')[0] || new Date().toISOString().split('T')[0]
+    }));
   }
 };

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 interface AssetDetailsModalProps {
   isOpen: boolean
   onClose: () => void
-  assetId: number | null
+  assetId: string | null
 }
 
 export default function AssetDetailsModal({ isOpen, onClose, assetId }: AssetDetailsModalProps) {
@@ -17,14 +17,14 @@ export default function AssetDetailsModal({ isOpen, onClose, assetId }: AssetDet
 
   useEffect(() => {
     if (isOpen && assetId) {
-      loadAsset()
+      loadAsset(assetId)
     }
   }, [isOpen, assetId])
 
-  const loadAsset = async () => {
+  const loadAsset = async (id: string) => {
     setLoading(true)
     try {
-      const data = await patrimonioService.getById(assetId!)
+      const data = await patrimonioService.getById(id)
       setAsset(data)
     } catch (error) {
       console.error("Erro ao carregar detalhes:", error)

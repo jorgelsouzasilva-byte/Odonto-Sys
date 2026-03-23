@@ -16,8 +16,8 @@ interface ProcedureLaunchItemModalProps {
 export default function ProcedureLaunchItemModal({ isOpen, onClose, onAdd, toothNumber }: ProcedureLaunchItemModalProps) {
   const [procedimentos, setProcedimentos] = useState<Procedimento[]>([]);
   const [dentistas, setDentistas] = useState<Funcionario[]>([]);
-  const [selectedProcedimentoId, setSelectedProcedimentoId] = useState<number | ''>('');
-  const [selectedProfissionalId, setSelectedProfissionalId] = useState<number | ''>('');
+  const [selectedProcedimentoId, setSelectedProcedimentoId] = useState<string | ''>('');
+  const [selectedProfissionalId, setSelectedProfissionalId] = useState<string | ''>('');
   const [selectedSurfaces, setSelectedSurfaces] = useState<string[]>([]);
   const [observacoes, setObservacoes] = useState('');
   const [valorBase, setValorBase] = useState(0);
@@ -30,15 +30,19 @@ export default function ProcedureLaunchItemModal({ isOpen, onClose, onAdd, tooth
   }, [isOpen]);
 
   const loadData = async () => {
-    const [procRes, staffRes] = await Promise.all([
-      procedimentoService.getProcedimentos({}),
-      equipeService.getFuncionarios()
-    ]);
-    setProcedimentos(procRes.data);
-    setDentistas(staffRes.data.filter(f => f.cargo === 'Dentista'));
+    try {
+      const [procRes, staffRes] = await Promise.all([
+        procedimentoService.getProcedimentos({}),
+        equipeService.getDentistas()
+      ]);
+      setProcedimentos(procRes.data);
+      setDentistas(staffRes.data);
+    } catch (error) {
+      console.error("Erro ao carregar dados para lançamento:", error);
+    }
   };
 
-  const handleProcedimentoChange = (id: number) => {
+  const handleProcedimentoChange = (id: string) => {
     setSelectedProcedimentoId(id);
     const proc = procedimentos.find(p => p.id === id);
     if (proc) {
@@ -158,7 +162,7 @@ export default function ProcedureLaunchItemModal({ isOpen, onClose, onAdd, tooth
               <select
                 required
                 value={selectedProcedimentoId}
-                onChange={(e) => handleProcedimentoChange(Number(e.target.value))}
+                onChange={(e) => handleProcedimentoChange(e.target.value)}
                 className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               >
                 <option value="">Selecione...</option>
@@ -172,7 +176,7 @@ export default function ProcedureLaunchItemModal({ isOpen, onClose, onAdd, tooth
               <select
                 required
                 value={selectedProfissionalId}
-                onChange={(e) => setSelectedProfissionalId(Number(e.target.value))}
+                onChange={(e) => setSelectedProfissionalId(e.target.value)}
                 className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               >
                 <option value="">Selecione...</option>

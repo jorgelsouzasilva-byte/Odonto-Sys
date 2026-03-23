@@ -10,7 +10,7 @@ export default function Branches() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null)
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>("")
 
@@ -40,13 +40,13 @@ export default function Branches() {
     loadBranches()
   }, [filterStatus, searchTerm])
 
-  const handleOpenModal = (id?: number) => {
+  const handleOpenModal = (id?: string) => {
     setSelectedBranchId(id || null)
     setIsModalOpen(true)
     setIsDetailsOpen(false)
   }
 
-  const handleOpenDetails = (id: number) => {
+  const handleOpenDetails = (id: string) => {
     setSelectedBranchId(id)
     setIsDetailsOpen(true)
   }
@@ -67,7 +67,7 @@ export default function Branches() {
     showToast(selectedBranchId ? "Filial atualizada com sucesso" : "Filial criada com sucesso")
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover esta filial?")) return
 
     try {

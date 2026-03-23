@@ -356,8 +356,8 @@ function CreateModal({ onClose, onSave }: { onClose: () => void; onSave: (data: 
     profissional: '',
     hora: '09:00',
     data: format(new Date(), 'yyyy-MM-dd'),
-    filial_id: 1,
-    profissional_id: 1,
+    filial_id: '',
+    profissional_id: '',
     duracao: 30,
     observacoes: ''
   })
@@ -465,10 +465,10 @@ function CreateModal({ onClose, onSave }: { onClose: () => void; onSave: (data: 
                 <select 
                   value={formData.profissional_id}
                   onChange={e => {
-                    const p = profissionais.find(prof => prof.id === Number(e.target.value))
+                    const p = profissionais.find(prof => prof.id === e.target.value)
                     setFormData({ 
                       ...formData, 
-                      profissional_id: Number(e.target.value),
+                      profissional_id: e.target.value,
                       profissional: p?.nome || ''
                     })
                   }}
@@ -519,7 +519,7 @@ function CreateModal({ onClose, onSave }: { onClose: () => void; onSave: (data: 
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Filial</label>
               <select 
                 value={formData.filial_id}
-                onChange={e => setFormData({...formData, filial_id: Number(e.target.value)})}
+                onChange={e => setFormData({...formData, filial_id: e.target.value})}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                 required
               >
@@ -775,7 +775,7 @@ function MonthView({ date, items, onConfirm, onDetails }: { date: Date; items: A
   )
 }
 
-function AgendaItemCard({ item, onConfirm, onDetails, compact }: { item: AgendaItem; onConfirm: (id: string) => void; onDetails: (item: AgendaItem) => void; compact?: boolean; key?: string }) {
+function AgendaItemCard({ item, onConfirm, onDetails, compact }: { item: AgendaItem; onConfirm: (id: any) => void; onDetails: (item: AgendaItem) => void; compact?: boolean; key?: string }) {
   const isPendente = item.status === 'pendente'
   
   return (
@@ -799,14 +799,14 @@ function AgendaItemCard({ item, onConfirm, onDetails, compact }: { item: AgendaI
               {format(new Date(item.startTime), "HH:mm")} - {format(new Date(item.endTime), "HH:mm")}
             </span>
           </div>
-          <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">{item.patientName}</h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{item.procedureName}</p>
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">{item.paciente || item.patientName}</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{item.procedimento || item.procedureName}</p>
           
           {!compact && (
             <div className="flex items-center gap-3 mt-3">
               <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
                 <User className="h-3 w-3" />
-                {item.professionalName}
+                {item.profissional || item.professionalName}
               </div>
             </div>
           )}
@@ -827,7 +827,7 @@ function AgendaItemCard({ item, onConfirm, onDetails, compact }: { item: AgendaI
   )
 }
 
-function DetailsModal({ item, onClose, onConfirm, onEdit }: { item: AgendaItem; onClose: () => void; onConfirm: (id: string) => void; onEdit: (item: AgendaItem) => void }) {
+function DetailsModal({ item, onClose, onConfirm, onEdit }: { item: AgendaItem; onClose: () => void; onConfirm: (id: any) => void; onEdit: (item: AgendaItem) => void }) {
   const isPendente = item.status === 'pendente'
 
   return (
@@ -852,13 +852,13 @@ function DetailsModal({ item, onClose, onConfirm, onEdit }: { item: AgendaItem; 
         
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-2 gap-6">
-            <DetailField label="Paciente" value={item.patientName} />
-            <DetailField label="Procedimento" value={item.procedureName} />
-            <DetailField label="Profissional" value={item.professionalName} />
+            <DetailField label="Paciente" value={item.paciente || item.patientName || ""} />
+            <DetailField label="Procedimento" value={item.procedimento || item.procedureName || ""} />
+            <DetailField label="Profissional" value={item.profissional || item.professionalName || ""} />
             <DetailField label="Data" value={format(new Date(item.startTime), "dd/MM/yyyy")} />
             <DetailField label="Horário" value={`${format(new Date(item.startTime), "HH:mm")} - ${format(new Date(item.endTime), "HH:mm")}`} />
             <DetailField label="Duração" value={`${item.duration} minutos`} />
-            <DetailField label="Filial" value={item.branchName} />
+            <DetailField label="Filial" value={item.filial_nome || item.branchName || ""} />
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</label>
               <div>
@@ -873,7 +873,7 @@ function DetailsModal({ item, onClose, onConfirm, onEdit }: { item: AgendaItem; 
               </div>
             </div>
           </div>
-          <DetailField label="Observações" value={item.observations || "Nenhuma observação."} fullWidth />
+          <DetailField label="Observações" value={item.observacoes || item.observations || "Nenhuma observação."} fullWidth />
         </div>
 
         <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex flex-col gap-3">
@@ -912,14 +912,14 @@ function DetailField({ label, value, fullWidth }: { label: string; value: string
   )
 }
 
-function EditModal({ item, onClose, onSave }: { item: AgendaItem; onClose: () => void; onSave: (id: string, data: any) => void }) {
+function EditModal({ item, onClose, onSave }: { item: AgendaItem; onClose: () => void; onSave: (id: any, data: any) => void }) {
   const [formData, setFormData] = useState({
-    procedimento_id: item.procedureId,
-    profissional_id: item.professionalId,
+    procedimento_id: item.procedimento_id || item.procedureId,
+    profissional_id: item.profissional_id || item.professionalId,
     data: format(new Date(item.startTime), "yyyy-MM-dd"),
     hora: format(new Date(item.startTime), "HH:mm"),
     duracao: item.duration,
-    observacoes: item.observations || ""
+    observacoes: item.observacoes || item.observations || ""
   })
 
   const handleSubmit = (e: React.FormEvent) => {

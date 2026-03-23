@@ -9,7 +9,7 @@ export default function Staff() {
   const [filiais, setFiliais] = useState<Filial[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null)
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [selectedFilial, setSelectedFilial] = useState<string>("")
 
@@ -17,7 +17,7 @@ export default function Staff() {
     setLoading(true)
     try {
       const [staffRes, filiaisRes] = await Promise.all([
-        equipeService.getFuncionarios(selectedFilial ? Number(selectedFilial) : undefined),
+        equipeService.getFuncionarios(selectedFilial || undefined),
         equipeService.getFiliais()
       ])
       setStaff(staffRes.data)
@@ -33,7 +33,7 @@ export default function Staff() {
     loadData()
   }, [selectedFilial])
 
-  const handleOpenModal = (id?: number) => {
+  const handleOpenModal = (id?: string) => {
     setSelectedStaffId(id || null)
     setIsModalOpen(true)
   }

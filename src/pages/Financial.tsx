@@ -24,6 +24,7 @@ import {
   TransactionStatus
 } from "../types/financeiro"
 import { financeiroService } from "../services/financeiroService"
+import { filialService, Filial } from "../services/filialService"
 
 export default function Financial() {
   const [activeTab, setActiveTab] = useState<'todas' | TransactionType>('todas')
@@ -46,6 +47,7 @@ export default function Financial() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [totalItems, setTotalItems] = useState(0)
+  const [filiais, setFiliais] = useState<Filial[]>([])
 
   const [formData, setFormData] = useState<Omit<Transaction, 'id'>>({
     data: new Date().toISOString().split('T')[0],
@@ -55,12 +57,22 @@ export default function Financial() {
     status: 'Pendente',
     tipo: 'receita',
     valor: 0,
-    filial_id: 1
+    filial_id: ''
   })
 
   useEffect(() => {
     fetchData()
+    loadFiliais()
   }, [filters])
+
+  const loadFiliais = async () => {
+    try {
+      const res = await filialService.getFiliais()
+      setFiliais(res.data)
+    } catch (error) {
+      console.error("Error loading filiais:", error)
+    }
+  }
 
   const fetchData = async () => {
     setLoading(true)
@@ -199,12 +211,13 @@ export default function Financial() {
         <div className="flex flex-wrap gap-3">
           <select 
             value={filters.filial_id || ''}
-            onChange={(e) => setFilters(prev => ({ ...prev, filial_id: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))}
+            onChange={(e) => setFilters(prev => ({ ...prev, filial_id: e.target.value || undefined, page: 1 }))}
             className="rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white shadow-sm focus:ring-indigo-500"
           >
             <option value="">Todas as Filiais</option>
-            <option value="1">Matriz</option>
-            <option value="2">Filial Sul</option>
+            {filiais.map(f => (
+              <option key={f.id} value={f.id}>{f.nome}</option>
+            ))}
           </select>
           
           <div className="flex rounded-md shadow-sm">
@@ -235,7 +248,7 @@ export default function Financial() {
                 status: 'Pendente',
                 tipo: 'receita',
                 valor: 0,
-                filial_id: 1
+                filial_id: ''
               })
               setIsFormOpen(true)
             }}
@@ -552,6 +565,21 @@ export default function Financial() {
                   <option value="Cartão de Crédito">Cartão de Crédito</option>
                   <option value="Cartão de Débito">Cartão de Débito</option>
                   <option value="Boleto">Boleto</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Filial</label>
+                <select 
+                  value={formData.filial_id}
+                  onChange={(e) => setFormData({...formData, filial_id: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  required
+                >
+                  <option value="">Selecione uma filial</option>
+                  {filiais.map(f => (
+                    <option key={f.id} value={f.id}>{f.nome}</option>
+                  ))}
                 </select>
               </div>
               

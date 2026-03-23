@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils"
 interface BranchDetailsModalProps {
   isOpen: boolean
   onClose: () => void
-  branchId: number | null
-  onEdit: (id: number) => void
-  onDelete: (id: number) => void
+  branchId: string | null
+  onEdit: (id: string) => void
+  onDelete: (id: string) => void
 }
 
 export default function BranchDetailsModal({ isOpen, onClose, branchId, onEdit, onDelete }: BranchDetailsModalProps) {
@@ -24,7 +24,7 @@ export default function BranchDetailsModal({ isOpen, onClose, branchId, onEdit, 
     }
   }, [isOpen, branchId])
 
-  const loadData = async (id: number) => {
+  const loadData = async (id: string) => {
     setLoading(true)
     setError(null)
     try {
